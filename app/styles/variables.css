@@ -1,0 +1,15 @@
+ :root {
+  --color-accent: #00ffd1;
+  --color-primary: #8b6cff;
+  --color-bg: #050506;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-white antialiased;
+  }
+}
+
+.glass-panel {
+  @apply bg-white/[0.015] backdrop-blur-[40px] border border-white/[0.08] shadow-2xl;
+}

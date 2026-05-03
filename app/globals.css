@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --sidebar-w: 260px;
+}
+
+/* Kaydırma kilidini açıyoruz */
+html, body {
+  min-height: 100%;
+  height: auto !important;
+  overflow-y: auto !important;
+  background-color: #050506;
+}
+
+body {
+  color: white;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 2rem;
+}
