@@ -1,53 +1,48 @@
- export async function POST(req: Request) {
+ import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export async function POST(req: Request) {
   try {
     const { industry, style, prompt } = await req.json();
 
-    // In a real app, this would call an LLM (OpenAI, Gemini, etc.)
-    // For now, we'll return a structured response that mimics an AI result
-    
-    const responses: Record<string, any> = {
-      dental: {
-        hero: "Gülüşünüzü Dijital Hassasiyetle Yeniden Tasarlayın",
-        sub: "Modern diş hekimliği için ileri seviye klinik çözümler ve kişiselleştirilmiş bakım protokolleri.",
-        cta: "Randevu Planla",
-        services: ["Dijital Gülüş Tasarımı", "İmplantioloji", "Ortodontik Analiz"]
-      },
-      saas: {
-        hero: "İş Akışınızı Yapay Zeka İle Otonomlaştırın",
-        sub: "Kurumsal ölçekte verimlilik için tasarlanmış yeni nesil otonom iş akışı motorları.",
-        cta: "API Entegrasyonunu Başlat",
-        services: ["Model Eğitimi", "Kenar Bilişim", "Vektör İşleme"]
-      },
-      agency: {
-        hero: "Markanızın Dijital Sinir Sistemini Kuralım",
-        sub: "Dönüşüm odaklı dijital kimlikler ve stratejik kullanıcı deneyimi tasarımı.",
-        cta: "Brief Gönder",
-        services: ["Stratejik UX Tasarımı", "Dönüşüm Optimizasyonu", "Marka Konumlandırma"]
-      },
-      law: {
-        hero: "Hukuki Süreçlerinizde Dijital Hakimiyet",
-        sub: "Küresel ölçekte stratejik dava yönetimi ve kurumsal savunma çözümleri.",
-        cta: "Danışmanlık Al",
-        services: ["Varlık Koruma", "Risk Azaltma", "Kurumsal Uyumluluk"]
-      }
-    };
+    const systemPrompt = `You are AIVA (Artificial Intelligence Virtual Architect), a high-end web architect. 
+    Your task is to generate premium website content in Turkish.
+    Return ONLY a JSON object with the following structure:
+    {
+      "hero": "A powerful catchy title",
+      "sub": "A sophisticated subtitle",
+      "cta": "Call to action text",
+      "services": ["Service 1", "Service 2", "Service 3"]
+    }`;
 
-    const result = responses[industry] || {
-      hero: `${industry} Alanında Öncü Çözümler`,
-      sub: `${prompt || "İşletmeniz için özel olarak tasarlanmış yüksek performanslı dijital altyapı."}`,
-      cta: "Hemen Başla",
-      services: ["Strateji", "Geliştirme", "Optimizasyon"]
-    };
+    const userPrompt = `Generate website content for the following business:
+    Industry: ${industry}
+    Extra details/prompt: ${prompt || "High performance digital infrastructure"}
+    Style: ${style || "Modern/Futuristic"}
+    Language: Turkish`;
 
-    // Simulate network delay for AI feel
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const content = JSON.parse(response.choices[0].message.content || "{}");
 
     return Response.json({ 
-      ...result,
+      ...content,
       status: "compiled",
-      architecture: "v4.2.0-neural"
+      architecture: "v4.2.0-neural",
+      model: "gpt-4o-mini"
     });
-  } catch (error) {
-    return Response.json({ error: "Failed to generate content" }, { status: 500 });
+  } catch (error: any) {
+    console.error("OpenAI Error:", error);
+    return Response.json({ error: error.message || "Failed to generate content" }, { status: 500 });
   }
 }
