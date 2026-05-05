@@ -11,12 +11,14 @@ import {
   Activity,
   Cpu,
   Zap,
-  BookOpen
+  BookOpen,
+  LogOut
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useApp } from "@/app/(app)/app-context";
+import { supabase } from "@/lib/supabase";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Command Center", href: "/dashboard" },
@@ -31,7 +33,15 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { activityLogs, efficiencyStats, deploymentQueue } = useApp();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    document.cookie = "isLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    router.push("/login");
+    router.refresh();
+  };
 
   const totalEvents = activityLogs.length;
   const loopScore = Math.min(100, 72 + Math.min(28, totalEvents * 2));
@@ -133,6 +143,14 @@ export default function Sidebar() {
           <Settings size={14} className="group-hover:rotate-45 transition-transform" />
           <span className="text-[9px] font-mono font-bold tracking-widest uppercase">System Settings</span>
         </div>
+
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-2 text-red-500/40 hover:text-red-500 transition-colors cursor-pointer group border-t border-white/5 pt-4"
+        >
+          <LogOut size={14} />
+          <span className="text-[9px] font-mono font-bold tracking-widest uppercase">Terminate Link</span>
+        </button>
       </div>
     </aside>
   );
