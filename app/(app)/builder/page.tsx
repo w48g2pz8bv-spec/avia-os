@@ -75,28 +75,26 @@ export default function BuilderPage() {
         const data = await res.json();
         
         if (data.imageKeyword) {
-            setHeroImage(`https://source.unsplash.com/featured/1600x900?${encodeURIComponent(data.imageKeyword)}`);
-            // Unsplash Source might be deprecated, using an alternative if needed, 
-            // but for a wow effect this is the fastest. Actually Unsplash Source IS deprecated.
-            // Let's use the new way or just a direct link if we want.
-            setHeroImage(`https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop`); // fallback
-            // Let's use a keyword based one from a stable service
             setHeroImage(`https://loremflickr.com/1600/900/${data.imageKeyword.split(' ').join(',')}`);
         }
 
         const generatedBlueprint: Component[] = [
-            { id: '1', type: 'HERO', title: data.hero || 'Neural Hero Header', status: 'draft' },
-            { id: '2', type: 'SUBTEXT', title: data.sub || 'Strategic Mission', status: 'draft' },
-            { id: '3', type: 'SERVICES', title: data.services ? data.services.join(' / ') : 'Core Services', status: 'draft' },
-            { id: '4', type: 'CTA', title: data.cta || 'Conversion Anchor', status: 'draft' }
+            { id: '1', type: 'HERO', title: data.hero?.title || 'Neural Hero Header', status: 'draft' },
+            { id: '2', type: 'SUBTEXT', title: data.hero?.sub || 'Strategic Mission', status: 'draft' },
+            { id: '3', type: 'ABOUT', title: data.about?.title || 'Hikayemiz', content: data.about?.content, status: 'draft' },
+            { id: '4', type: 'SERVICES', title: 'Hizmetlerimiz', items: data.services, status: 'draft' },
+            { id: '5', type: 'FAQ', title: 'Sıkça Sorulan Sorular', items: data.faqs, status: 'draft' },
+            { id: '6', type: 'TESTIMONIALS', title: 'Müşteri Yorumları', items: data.testimonials, status: 'draft' },
+            { id: '7', type: 'CONTACT', title: 'İletişim', items: data.contact, status: 'draft' },
+            { id: '8', type: 'CTA', title: data.hero?.cta || 'Conversion Anchor', status: 'draft' }
         ];
 
         setBlueprint(generatedBlueprint);
         setBuildState('done');
-        addLocalLog(`SUCCESS: Architecture Generated (v${data.architecture || '4.2.0'}).`);
-        addActivity(`Website Architecture Generated: 4 Nodes`, 'builder');
-        addToQueue('Website_Blueprint_v2.4');
-        toast("Architecture Complete: Personalized using your Knowledge Base.", "success");
+        addLocalLog(`SUCCESS: Deep Architecture Generated (v${data.architecture || '5.0.0-Deep'}).`);
+        addActivity(`Full Corporate Architecture Generated: 8 Nodes`, 'builder');
+        addToQueue('Website_Blueprint_v5.0_Deep');
+        toast("Deep Architecture Complete: Fully personalized.", "success");
     } catch (error) {
         addLocalLog(`ERROR: Neural API Failed.`);
         setBuildState('idle');
@@ -136,8 +134,16 @@ export default function BuilderPage() {
     }, 1500);
   };
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const updateComponentTitle = (id: string, newTitle: string) => {
+    setBlueprint(prev => prev.map(c => c.id === id ? { ...c, title: newTitle, status: 'final' } : c));
+    addLocalLog(`Manual override: ${id} updated.`);
+    addToQueue('Website_Blueprint_Update');
+  };
+
   return (
-    <div className="max-w-[1600px] animate-in fade-in duration-1000 pb-20">
+    <div className="max-w-[1600px] animate-in fade-in duration-1000 pb-20 relative">
       <PageHeader 
         title="Neural Architect" 
         statusText={buildState === 'done' ? "Architecture: Vetted" : `Workspace: ${industry}_Sector`}
@@ -285,9 +291,13 @@ export default function BuilderPage() {
                 {buildState === 'done' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
                         {blueprint.map((comp, idx) => (
-                            <div key={comp.id} className="glass-panel p-8 flex items-center justify-between group hover:border-[#00ffd1]/40 transition-all bg-black/40 relative border-l-4 border-l-white/5 hover:border-l-[#00ffd1]">
+                            <div 
+                                key={comp.id} 
+                                onClick={() => setEditingId(comp.id)}
+                                className={`glass-panel p-8 flex items-center justify-between group hover:border-[#00ffd1]/40 transition-all bg-black/40 relative border-l-4 cursor-pointer ${editingId === comp.id ? 'border-l-[#00ffd1] bg-[#00ffd1]/5' : 'border-l-white/5 hover:border-l-[#00ffd1]'}`}
+                            >
                                 <div className="flex items-center gap-8">
-                                    <div className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
                                         <button onClick={() => moveComponent(idx, 'up')} className="text-white/10 hover:text-[#00ffd1] transition-all"><ArrowUp size={14} /></button>
                                         <button onClick={() => moveComponent(idx, 'down')} className="text-white/10 hover:text-[#00ffd1] transition-all"><ArrowDown size={14} /></button>
                                     </div>
@@ -300,7 +310,7 @@ export default function BuilderPage() {
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                                     <button 
                                         onClick={() => refineComponent(comp.id)}
                                         className="p-3 bg-white/5 border border-white/10 rounded-xl text-white/40 hover:text-[#00ffd1] hover:border-[#00ffd1]/40 transition-all flex items-center gap-2 text-[10px] font-mono font-black uppercase"
@@ -324,6 +334,36 @@ export default function BuilderPage() {
                     </div>
                 )}
             </div>
+
+            {/* EDIT PANEL OVERLAY */}
+            {editingId && (
+                <div className="absolute inset-y-0 right-0 w-80 bg-[#050506] border-l border-white/10 p-8 animate-in slide-in-from-right duration-500 z-30 shadow-[-20px_0_50px_rgba(0,0,0,0.5)]">
+                    <div className="flex justify-between items-center mb-10">
+                        <h3 className="text-[10px] font-mono font-black text-[#00ffd1] uppercase tracking-widest">Node Editor</h3>
+                        <button onClick={() => setEditingId(null)} className="text-white/20 hover:text-white transition-colors"><Plus className="rotate-45" size={20} /></button>
+                    </div>
+                    
+                    <div className="space-y-8">
+                        <div className="space-y-4">
+                            <label className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Component Content</label>
+                            <textarea 
+                                value={blueprint.find(c => c.id === editingId)?.title || ""}
+                                onChange={(e) => updateComponentTitle(editingId, e.target.value)}
+                                className="w-full bg-black border border-white/5 rounded-2xl p-6 text-sm text-white/80 font-mono focus:border-[#00ffd1]/40 outline-none transition-all h-64 resize-none"
+                            />
+                        </div>
+                        <div className="p-6 bg-[#00ffd1]/5 border border-[#00ffd1]/10 rounded-2xl">
+                            <p className="text-[8px] font-mono text-[#00ffd1]/60 uppercase tracking-widest italic">Note: Changes reflect in live preview instantly.</p>
+                        </div>
+                        <button 
+                            onClick={() => setEditingId(null)}
+                            className="w-full py-4 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#00ffd1] transition-all"
+                        >
+                            Save Node
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="p-6 border-t border-white/5 flex items-center justify-between bg-[#050506]">
                 <div className="flex items-center gap-8">
@@ -404,24 +444,81 @@ export default function BuilderPage() {
                     </div>
 
                     {/* Services Bento Grid */}
-                    <div className="py-24 px-8 max-w-7xl mx-auto space-y-12">
-                        <div className="text-center space-y-4 mb-16">
-                            <h2 className="text-4xl font-syne font-black uppercase italic text-white">Our Expertise</h2>
-                            <p className="text-sm font-mono text-white/40 uppercase tracking-widest">
-                                {blueprint.find(c => c.type === 'SERVICES')?.title || 'Premium Solutions'}
-                            </p>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {(blueprint.find(c => c.type === 'SERVICES')?.title.split(' / ') || ['Strateji', 'Tasarım', 'Geliştirme']).slice(0, 3).map((serviceName, i) => (
-                                <div key={i} className="p-8 bg-white/[0.02] border border-white/5 rounded-3xl hover:border-[#00ffd1]/30 transition-all group">
-                                    <div className="w-12 h-12 bg-white/5 rounded-2xl mb-8 flex items-center justify-center group-hover:bg-[#00ffd1]/10 transition-colors">
-                                        <Zap size={20} className="text-white/40 group-hover:text-[#00ffd1] transition-colors" />
-                                    </div>
-                                    <h3 className="text-xl font-black text-white mb-4 uppercase italic">{serviceName}</h3>
-                                    <p className="text-sm text-white/40 leading-relaxed">İşletmenizi dijital dünyada öne çıkaracak yapay zeka destekli {serviceName.toLowerCase()} mimarisi.</p>
+                    <div className="py-24 px-8 max-w-7xl mx-auto space-y-24">
+                        
+                        {/* ABOUT SECTION */}
+                        {blueprint.find(c => c.type === 'ABOUT') && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                                <div className="space-y-8">
+                                    <h2 className="text-4xl font-syne font-black uppercase italic text-white tracking-tighter">
+                                        {blueprint.find(c => c.type === 'ABOUT')?.title}
+                                    </h2>
+                                    <p className="text-lg text-white/40 leading-relaxed font-light italic">
+                                        {blueprint.find(c => c.type === 'ABOUT')?.content}
+                                    </p>
                                 </div>
-                            ))}
+                                <div className="aspect-square bg-white/5 rounded-[3rem] border border-white/10 relative overflow-hidden group">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-[#00ffd1]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                    <img src={heroImage} alt="About" className="w-full h-full object-cover opacity-40 scale-110 group-hover:scale-100 transition-transform duration-1000" />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SERVICES SECTION */}
+                        <div className="space-y-12">
+                            <div className="text-center space-y-4 mb-16">
+                                <h2 className="text-4xl font-syne font-black uppercase italic text-white">Uzmanlık Alanlarımız</h2>
+                                <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Geleceğin Teknolojisiyle Donatılmış Çözümler</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {(blueprint.find(c => c.type === 'SERVICES')?.items || []).map((service: any, i: number) => (
+                                    <div key={i} className="p-10 bg-white/[0.02] border border-white/5 rounded-[2.5rem] hover:border-[#00ffd1]/30 transition-all group">
+                                        <div className="w-14 h-14 bg-white/5 rounded-2xl mb-8 flex items-center justify-center group-hover:bg-[#00ffd1]/10 transition-colors">
+                                            <Zap size={24} className="text-white/40 group-hover:text-[#00ffd1] transition-colors" />
+                                        </div>
+                                        <h3 className="text-xl font-black text-white mb-4 uppercase italic">{service.name}</h3>
+                                        <p className="text-sm text-white/40 leading-relaxed">{service.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
+
+                        {/* FAQ SECTION */}
+                        {blueprint.find(c => c.type === 'FAQ') && (
+                            <div className="max-w-3xl mx-auto space-y-12">
+                                <h2 className="text-3xl font-syne font-black uppercase italic text-center text-white">Merak Edilenler</h2>
+                                <div className="space-y-4">
+                                    {(blueprint.find(c => c.type === 'FAQ')?.items || []).map((faq: any, i: number) => (
+                                        <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                                            <h4 className="text-sm font-black text-[#00ffd1] mb-2 uppercase">{faq.q}</h4>
+                                            <p className="text-xs text-white/40 italic">{faq.a}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* CONTACT SECTION */}
+                        {blueprint.find(c => c.type === 'CONTACT') && (
+                            <div className="p-16 bg-[#00ffd1]/5 border border-[#00ffd1]/20 rounded-[4rem] text-center space-y-8 relative overflow-hidden">
+                                <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-[#00ffd1]/10 rounded-full blur-[100px]" />
+                                <h2 className="text-4xl font-syne font-black uppercase italic text-white relative z-10">Bize Ulaşın</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Adres</p>
+                                        <p className="text-sm text-white/60">{blueprint.find(c => c.type === 'CONTACT')?.items?.address}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Telefon</p>
+                                        <p className="text-sm text-white/60">{blueprint.find(c => c.type === 'CONTACT')?.items?.phone}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">E-Posta</p>
+                                        <p className="text-sm text-white/60">{blueprint.find(c => c.type === 'CONTACT')?.items?.email}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -431,3 +528,4 @@ export default function BuilderPage() {
     </div>
   );
 }
+

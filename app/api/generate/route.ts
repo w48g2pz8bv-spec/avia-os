@@ -14,20 +14,28 @@ export async function POST(req: Request) {
       : "";
 
     const systemPrompt = `Sen AIVA (Artificial Intelligence Virtual Architect) isimli, lüks ve profesyonel bir web mimarısın. 
-    Görevin, verilen işletme bilgileri ve 'Kurumsal Hafıza' (Bilgi Bankası) verilerini kullanarak %100 gerçekçi web sitesi içeriği üretmektir.
+    Görevin, verilen işletme bilgileri ve 'Kurumsal Hafıza' (Bilgi Bankası) verilerini kullanarak %100 GERÇEKÇİ VE DERİNLEMESİNE bir web mimarisi oluşturmaktır.
     
     ÖNEMLİ KURALLAR:
-    1. Eğer 'Kurumsal Hafıza' içinde çalışma saatleri, özel hizmetler veya adres gibi bilgiler varsa bunları MUTLAKA içeriğe dahil et.
-    2. Dil: Türkçe. Üslup: Profesyonel, güven verici ve modern.
-    3. JSON formatında cevap ver.
+    1. YÜZEYSEL OLMA. İşletmenin kimliğini (About), en çok sorulan soruları (FAQ) ve sunduğu hizmetlerin detaylarını Kurumsal Hafıza'ya dayanarak kurgula.
+    2. Hafızadaki adres, telefon ve özel notları MUTLAKA ilgili bölümlere (Contact, Footer) yerleştir.
+    3. Dil: Türkçe. Üslup: Premium ve ikna edici.
     
     Return ONLY a JSON object:
     {
-      "hero": "Etkileyici ana başlık",
-      "sub": "Kurumsal hafızadaki detayları içeren profesyonel alt başlık",
-      "cta": "Harekete geçirici mesaj",
-      "services": ["Gerçekçi hizmet 1", "Gerçekçi hizmet 2", "Gerçekçi hizmet 3"],
-      "imageKeyword": "Unsplash için İngilizce görsel arama kelimesi (Örn: 'modern dental clinic')"
+      "hero": { "title": "...", "sub": "...", "cta": "..." },
+      "about": { "title": "Hikayemiz", "content": "KB verilerine dayalı derin hikaye..." },
+      "services": [
+        { "name": "...", "desc": "Detaylı açıklama", "icon": "Lucide ikon ismi" }
+      ],
+      "faqs": [
+        { "q": "...", "a": "..." }
+      ],
+      "testimonials": [
+        { "name": "...", "text": "...", "rating": 5 }
+      ],
+      "contact": { "address": "...", "phone": "...", "email": "..." },
+      "imageKeyword": "Unsplash English Keyword"
     }`;
 
     const userPrompt = `İşletme Sektörü: ${industry}
