@@ -89,59 +89,44 @@ export default function VapiPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMsg, timestamp: new Date().toLocaleTimeString() }]);
     setIsProcessing(true);
     
-    // Simulate Neural Reasoning
-    addNeuralLog(`Intercepting Input: "${userMsg.substring(0, 20)}..."`);
+    // Neural API Call
+    addNeuralLog(`Querying Neural Brain...`);
     
-    setTimeout(() => addNeuralLog("Analyzing Strategic Intent: " + (selectedAgent.includes("Setter") ? "BOOKING_REQUEST" : "FOLLOW_UP")), 800);
-    setTimeout(() => addNeuralLog("Accessing Knowledge Cluster: Price_List.pdf"), 1600);
-    setTimeout(() => addNeuralLog("Applying Empathy Layer (v4.2)..."), 2400);
-
-    setTimeout(() => {
-        // Simple client-side simulated RAG: find matching knowledge entries
-        const lowerInput = userMsg.toLowerCase();
-        const relevantKnowledge = knowledgeBase.filter(k => 
-            lowerInput.includes(k.sector.toLowerCase()) || 
-            k.tags.some(t => lowerInput.includes(t.toLowerCase())) ||
-            lowerInput.split(' ').some(word => word.length > 4 && k.content.toLowerCase().includes(word))
-        );
-
-        let response = "";
+    try {
+        const res = await fetch('/api/vapi/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                message: userMsg, 
+                context: knowledgeBase,
+                agentName: selectedAgent
+            })
+        });
         
-        if (relevantKnowledge.length > 0) {
-            const contextText = relevantKnowledge.map(k => k.content).join(' ');
-            if (selectedAgent.includes("Setter")) {
-                response = `Based on my training data: "${contextText.substring(0, 80)}...". I can help you book an appointment with Dr. Smith. How about Tuesday at 10 AM?`;
-            } else {
-                response = `I noticed some relevant context: "${contextText.substring(0, 80)}...". Regarding your follow-up, on a scale of 1 to 10, how would you rate your pain right now?`;
-            }
-            addNeuralLog(`Neural Match Found: ${relevantKnowledge.length} vectors utilized.`);
-        } else {
-            response = selectedAgent.includes("Setter") 
-                ? "I can certainly help you with that booking. However, I couldn't find specific instructions for this query in my Knowledge Base. Dr. Smith has an opening this Tuesday at 10 AM. Does that work for you?"
-                : "I don't have specific training data for that context yet. I'm so sorry to hear you're feeling discomfort. On a scale of 1 to 10, how would you rate the pain right now?";
-            addNeuralLog(`WARNING: No relevant vectors found in Knowledge Base.`);
-        }
+        const data = await res.json();
+        const response = data.response || "Neural sync lost. Re-establishing link...";
+
+        addNeuralLog(`Neural Match Success: Response Generated.`);
             
         setMessages(prev => [...prev, { role: 'assistant', content: response, timestamp: new Date().toLocaleTimeString() }]);
         setIsProcessing(false);
-        toast("Agent Response Generated", "success");
+        toast("Voice Calibration Complete", "success");
 
         // Trigger Web Speech API (Text-to-Speech)
         if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel(); // Stop any ongoing speech
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(response);
-            utterance.rate = selectedAgent.includes("Setter") ? 1.05 : 0.95; // Slightly faster for sales, slower for empathy
-            utterance.pitch = selectedAgent.includes("Setter") ? 1.1 : 0.9;
-            utterance.lang = "tr-TR"; // Try Turkish voice, falls back to default
-            
-            // Try to find a good voice
-            const voices = window.speechSynthesis.getVoices();
-            const preferredVoice = voices.find(v => v.lang.includes('tr') || v.lang.includes('en'));
-            if (preferredVoice) utterance.voice = preferredVoice;
-
+            utterance.rate = 1.0;
+            utterance.pitch = 1.1;
+            utterance.lang = "tr-TR";
             window.speechSynthesis.speak(utterance);
         }
-    }, 3500);
+    } catch (error) {
+        addNeuralLog(`ERROR: Neural Link Interrupted.`);
+        setIsProcessing(false);
+        toast("Connection Error", "error");
+    }
+
   };
 
   return (

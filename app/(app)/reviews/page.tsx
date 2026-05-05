@@ -211,7 +211,63 @@ export default function ReviewsPage() {
          </div>
       </div>
       
-      <div className="grid gap-8">
+      {/* LEAD ACQUISITION ENGINE - GROUNDBREAKING FEATURE */}
+      <div className="mt-16 glass-panel p-10 bg-gradient-to-br from-[#00ffd1]/10 to-transparent border-[#00ffd1]/20 relative overflow-hidden">
+         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,255,209,0.05)_0%,transparent_50%)]" />
+         
+         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 relative z-10">
+            <div className="space-y-2">
+               <div className="flex items-center gap-3">
+                  <Zap size={22} className="text-[#00ffd1]" />
+                  <h3 className="text-2xl font-syne font-black italic uppercase tracking-tighter text-white">Lead Acquisition Engine</h3>
+               </div>
+               <p className="text-[10px] font-mono text-white/40 uppercase tracking-[0.3em]">Neural Prospecting: ACTIVE // Sector: Dental_Clinic</p>
+            </div>
+            <button 
+               onClick={() => {
+                  toast("Initializing Global Lead Scan...", "info");
+                  setIsScanning(true);
+                  setTimeout(() => setIsScanning(false), 3000);
+               }}
+               className="bg-[#00ffd1] text-black px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all shadow-[0_0_30px_#00ffd144]"
+            >
+               {isScanning ? 'Scraping Market...' : 'Initiate Autonomous Prospecting'}
+            </button>
+         </div>
+
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+            {[
+               { name: "Ahmet Yılmaz", source: "Google Maps", distance: "2.4km", signal: "HIGH", intent: "Searching for 'İmplant Fiyatları'", score: 98 },
+               { name: "Ecem S.", source: "Instagram Ads", distance: "N/A", signal: "MED", intent: "Interacted with Dental Post", score: 82 },
+               { name: "Global Med Center", source: "B2B Directory", distance: "5.1km", signal: "HIGH", intent: "Competitor review drop detected", score: 94 }
+            ].map((lead, i) => (
+               <div key={i} className="glass-panel p-6 bg-black/60 border-white/5 hover:border-[#00ffd1]/40 transition-all group">
+                  <div className="flex justify-between items-start mb-6">
+                     <div className="space-y-1">
+                        <h4 className="text-sm font-black text-white group-hover:text-[#00ffd1] transition-colors">{lead.name}</h4>
+                        <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest">{lead.source} // {lead.distance}</p>
+                     </div>
+                     <div className="text-right">
+                        <span className="text-[8px] font-mono text-[#00ffd1] font-black">{lead.score}% MATCH</span>
+                        <div className="h-1 w-12 bg-white/5 rounded-full mt-1 overflow-hidden">
+                           <div className="h-full bg-[#00ffd1]" style={{ width: `${lead.score}%` }} />
+                        </div>
+                     </div>
+                  </div>
+                  
+                  <div className="p-4 bg-white/5 rounded-xl mb-6">
+                     <p className="text-[10px] text-white/60 font-mono italic">"AIVA Detect: {lead.intent}"</p>
+                  </div>
+
+                  <button className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-mono font-black uppercase tracking-widest text-white/40 hover:bg-[#00ffd1] hover:text-black hover:border-[#00ffd1] transition-all">
+                     Draft Neural Offer
+                  </button>
+               </div>
+            ))}
+         </div>
+      </div>
+
+      <div className="mt-16 grid gap-8">
         {inbox.map((item) => (
           <div key={item.id} className="glass-panel p-10 flex flex-col lg:flex-row gap-12 hover:border-[#00ffd1]/20 transition-all group relative overflow-hidden bg-black/40">
             {/* REVIEW SIDE */}

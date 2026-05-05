@@ -25,7 +25,8 @@ import {
   Sparkles,
   Brain,
   AlertCircle,
-  Box
+  Box,
+  ChevronRight
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -49,7 +50,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="max-w-[1600px] animate-in fade-in duration-1000">
+    <div className="animate-in fade-in duration-1000">
       <PageHeader 
         title="Autonomous Command" 
         statusText={`Neural Loop: ACTIVE // ${efficiencyStats.hoursSaved} Human-Hours Saved`}
@@ -175,39 +176,41 @@ export default function DashboardPage() {
               </div>
            </div>
 
-           {/* MATRIX SYNERGY MODULE */}
-           <div className="glass-panel p-10 bg-black/40 relative">
-              <div className="flex items-center gap-3 mb-10">
-                 <Workflow size={20} className="text-[#00ffd1]" />
-                 <h3 className="text-[10px] font-mono font-black text-white/20 tracking-[0.5em] uppercase italic">Neural Synergy Matrix</h3>
+           {/* NEURAL ADVISOR - SELF HEALING UI */}
+           <div className="glass-panel p-10 bg-black/40 relative border-l-4 border-l-[#00ffd1] overflow-hidden">
+              <div className="absolute -right-20 -top-20 w-60 h-60 bg-[#00ffd1]/5 rounded-full blur-[80px]" />
+              <div className="flex items-center justify-between mb-8 relative z-10">
+                 <div className="flex items-center gap-3">
+                    <Brain size={20} className="text-[#00ffd1] animate-pulse" />
+                    <h3 className="text-[10px] font-mono font-black text-white/60 tracking-[0.4em] uppercase italic">Neural Advisor Core</h3>
+                 </div>
+                 <span className="text-[8px] font-mono text-[#00ffd1] bg-[#00ffd1]/10 px-3 py-1 rounded-full uppercase tracking-widest animate-pulse">Scanning Active...</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="p-8 bg-white/5 rounded-[2.5rem] border border-white/5 space-y-6 group hover:border-[#00ffd1]/20 transition-all">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400"><MonitorCheck size={20} /></div>
-                            <span className="text-[10px] font-mono text-white/60 uppercase tracking-widest">Builder ↔ Sync</span>
-                        </div>
-                        <div className="h-1.5 w-1.5 rounded-full bg-[#00ffd1] animate-pulse shadow-[0_0_10px_#00ffd1]" />
+              
+              <div className="space-y-6 relative z-10">
+                 {[
+                    { id: '1', title: 'Conversion Drift Detected', desc: 'Web sitesinde ziyaretçiler randevu almadan çıkıyor. Randevu butonunu kırmızıya çevirip yukarı almamı ister misin?', icon: AlertCircle, action: 'Execute Pivot' },
+                    { id: '2', title: 'Sector Opportunity', desc: 'Bölgendeki rakip kliniklerin Pazar günleri kapalı olduğunu fark ettim. Pazar mesaisi ekleyerek fark yaratabiliriz.', icon: Sparkles, action: 'Draft Strategy' }
+                 ].map((advice, i) => (
+                    <div key={i} className="flex gap-6 p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-[#00ffd1]/20 transition-all group">
+                       <div className="p-4 bg-black rounded-2xl text-[#00ffd1] group-hover:scale-110 transition-transform h-fit">
+                          <advice.icon size={22} />
+                       </div>
+                       <div className="flex-1 space-y-2">
+                          <h4 className="text-xs font-black text-white uppercase tracking-wider">{advice.title}</h4>
+                          <p className="text-[11px] text-white/40 leading-relaxed italic">{advice.desc}</p>
+                          <div className="pt-2">
+                             <button className="text-[9px] font-mono font-black text-[#00ffd1] uppercase tracking-widest hover:underline flex items-center gap-2">
+                                {advice.action} <ChevronRight size={12} />
+                             </button>
+                          </div>
+                       </div>
                     </div>
-                    <p className="text-[11px] text-white/40 font-mono italic leading-relaxed">
-                        "Every architectural shift in the Architect is being dynamically queued for production deployment."
-                    </p>
-                 </div>
-                 <div className="p-8 bg-white/5 rounded-[2.5rem] border border-white/5 space-y-6 group hover:border-blue-400/20 transition-all">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-400"><MessageSquare size={20} /></div>
-                            <span className="text-[10px] font-mono text-white/60 uppercase tracking-widest">Sentiment ↔ Auto</span>
-                        </div>
-                        <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_10px_#60a5fa]" />
-                    </div>
-                    <p className="text-[11px] text-white/40 font-mono italic leading-relaxed">
-                        "AI is monitoring customer sentiment 24/7. Negative flags trigger auto-recovery sequences instantly."
-                    </p>
-                 </div>
+                 ))}
               </div>
            </div>
+
+           {/* MATRIX SYNERGY MODULE */}
         </div>
 
         <aside className="col-span-12 lg:col-span-4 space-y-8">

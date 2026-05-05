@@ -10,12 +10,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <NeuralCommandBar />
         <NeuralInsight />
         <Sidebar />
-        <main className="ml-[260px] flex-1 p-10 overflow-y-auto">
-
-          {children}
+        <main className="ml-[240px] flex-1 p-10 overflow-y-auto flex justify-center">
+          <div className="w-full max-w-[1400px]">
+            {children}
+          </div>
         </main>
       </div>
     </AppProvider>
   );
 }
-

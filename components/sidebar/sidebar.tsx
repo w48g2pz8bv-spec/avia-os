@@ -47,7 +47,7 @@ export default function Sidebar() {
   const loopScore = Math.min(100, 72 + Math.min(28, totalEvents * 2));
 
   return (
-    <aside className="w-[260px] h-screen sticky top-0 bg-[#050506] border-r border-white/5 flex flex-col p-6 overflow-hidden z-[100]">
+    <aside className="w-[240px] h-screen sticky top-0 bg-[#050506] border-r border-white/5 flex flex-col p-6 overflow-hidden z-[100]">
       {/* Brand */}
       <div className="mb-10 px-2 flex justify-between items-start">
         <div className="space-y-1">
