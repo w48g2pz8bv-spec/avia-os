@@ -655,8 +655,7 @@ export default function VapiPage() {
               </div>
           </div>
       )}
-    </div>
-  );
+
 
                     {activeTab === 'config' && (
                         <div className="p-8 space-y-8 animate-in slide-in-from-right-4 duration-500">
