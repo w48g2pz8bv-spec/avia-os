@@ -21,7 +21,8 @@ import {
   Lock,
   Send,
   Loader2,
-  Trash2
+  Trash2,
+  Wand2
 } from "lucide-react";
 import VapiWaveform from "@/components/ui/vapi-waveform";
 import { useToast } from "@/lib/toast-context";
@@ -34,7 +35,7 @@ type Message = {
 
 export default function VapiPage() {
   const { toast } = useToast();
-  const { knowledgeBase } = useApp();
+  const { selectedSector, addActivity, knowledgeBase, user, supabase, trackEvent } = useApp();
   const [selectedAgent, setSelectedAgent] = useState("Appointment Setter v4");
   const [activeTab, setActiveTab] = useState("console"); // console, config, voice
   const [chatInput, setChatInput] = useState("");
@@ -89,7 +90,6 @@ export default function VapiPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMsg, timestamp: new Date().toLocaleTimeString() }]);
     setIsProcessing(true);
     
-    // Neural API Call
     addNeuralLog(`Querying Neural Brain...`);
     
     try {
@@ -107,17 +107,33 @@ export default function VapiPage() {
         const response = data.response || "Neural sync lost. Re-establishing link...";
 
         addNeuralLog(`Neural Match Success: Response Generated.`);
-            
         setMessages(prev => [...prev, { role: 'assistant', content: response, timestamp: new Date().toLocaleTimeString() }]);
         setIsProcessing(false);
-        toast("Voice Calibration Complete", "success");
 
-        // Trigger Web Speech API (Text-to-Speech)
+        // MASTERFUL CONVERSION LOGIC
+        const lowerContent = response.toLowerCase();
+        if (lowerContent.includes('appointment') || lowerContent.includes('booked') || lowerContent.includes('randevu') || lowerContent.includes('kayıt')) {
+            addActivity(`Voice Conversion: Appointment intent detected`, 'sync');
+            trackEvent('voice_conversion', { agent: selectedAgent, response_sample: response.substring(0, 50) });
+            
+            if (user) {
+                await supabase.from('leads').insert({
+                    user_id: user.id,
+                    name: `Voice Prospect [${new Date().toLocaleTimeString()}]`,
+                    source: 'AI Voice Assistant',
+                    intent: 'Scheduled via Conversation',
+                    score: 96,
+                    status: 'Qualified'
+                });
+                toast("Outcome Detected: Lead Synced to CRM", "success");
+            }
+        }
+
+        // Text-to-Speech
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(response);
             utterance.rate = 1.0;
-            utterance.pitch = 1.1;
             utterance.lang = "tr-TR";
             window.speechSynthesis.speak(utterance);
         }
@@ -126,7 +142,6 @@ export default function VapiPage() {
         setIsProcessing(false);
         toast("Connection Error", "error");
     }
-
   };
 
   return (
@@ -176,7 +191,31 @@ export default function VapiPage() {
           </div>
 
           {/* NEW: EMOTIONAL PROTOCOLS (EQ LAYER) */}
-          <div className="glass-panel p-8 space-y-6 bg-[#00ffd1]/5 border-[#00ffd1]/20">
+                <div className="glass-panel p-8 bg-gradient-to-br from-indigo-500/5 to-transparent border-indigo-500/20 group">
+                    <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-3">
+                            <Wand2 size={18} className="text-indigo-400" />
+                            <h3 className="text-[10px] font-mono font-black text-white/40 tracking-[0.4em] uppercase italic">Neural Call Script</h3>
+                        </div>
+                        <span className="text-[8px] font-mono text-indigo-400/60 border border-indigo-400/20 px-2 py-0.5 rounded-full uppercase">TED-Method Active</span>
+                    </div>
+                    
+                    <div className="space-y-6">
+                        <div className="p-6 bg-black/40 rounded-2xl border border-white/5 font-mono text-[11px] leading-relaxed text-white/60 italic relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500/40" />
+                            <p className="mb-4 text-indigo-400 font-black uppercase tracking-widest">[Opening Hook]</p>
+                            "Merhaba, ben AIVA. {selectedSector.label} alanındaki son trendleri analiz ederken sizin işletmenizin potansiyelini fark ettim. Çoğu işletme X hatasını yaparken, sizin Y stratejinizle nasıl fark yaratabileceğinizi konuşmak için arıyorum..."
+                        </div>
+                        <button 
+                            onClick={() => toast("Regenerating with Narrative Engine...", "info")}
+                            className="w-full py-4 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 rounded-xl text-[10px] font-mono font-black uppercase tracking-widest hover:bg-indigo-500 hover:text-white transition-all"
+                        >
+                            Refine Script DNA
+                        </button>
+                    </div>
+                </div>
+
+                <div className="glass-panel p-8 space-y-6 bg-[#00ffd1]/5 border-[#00ffd1]/20">
              <div className="flex items-center gap-3">
                 <Brain size={18} className="text-[#00ffd1]" />
                 <h3 className="text-[10px] font-mono font-black text-white/20 tracking-[0.3em] uppercase italic">Neural Persona Protocols</h3>
@@ -372,7 +411,7 @@ export default function VapiPage() {
                     )}
                 </div>
 
-                {/* Footer Footer Dashboard */}
+                {/* Footer Dashboard */}
                 <div className="mt-auto p-6 border-t border-white/5 bg-[#050506]/80 flex justify-between items-center font-mono text-[9px] text-white/20 uppercase italic tracking-widest relative z-20">
                     <span>Neural_Engine_v4.5.1 // SECURE_SYNC</span>
                     <div className="flex gap-6">
@@ -386,7 +425,3 @@ export default function VapiPage() {
     </div>
   );
 }
-
-
-
-

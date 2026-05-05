@@ -20,7 +20,9 @@ import {
   Share2,
   Loader2,
   Send,
-  Zap
+  Zap,
+  Activity,
+  Brain
 } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
 
@@ -28,6 +30,7 @@ export default function ReviewsPage() {
   const { toast } = useToast();
   const [isScanning, setIsScanning] = useState(false);
   const [sentimentScore, setSentimentScore] = useState(92.4);
+  const [isRecoveryActive, setIsRecoveryActive] = useState(false);
   const [selectedResponseTone, setSelectedResponseTone] = useState("Empathetic");
   const [activeDrafts, setActiveDrafts] = useState<Record<number, string>>({});
   const [draftingId, setDraftingId] = useState<number | null>(null);
@@ -66,8 +69,64 @@ export default function ReviewsPage() {
     }
   ];
 
-  const [isRecoveryActive, setIsRecoveryActive] = useState(false);
-  const { addActivity } = useApp();
+  const [leads, setLeads] = useState<any[]>([
+    { name: "Ahmet Yılmaz", source: "Google Maps", distance: "2.4km", signal: "HIGH", intent: "Searching for 'İmplant Fiyatları'", score: 98, status: 'New' },
+    { name: "Ecem S.", source: "Instagram Ads", distance: "N/A", signal: "MED", intent: "Interacted with Dental Post", score: 82, status: 'New' },
+    { name: "Global Med Center", source: "B2B Directory", distance: "5.1km", signal: "HIGH", intent: "Competitor review drop detected", score: 94, status: 'New' }
+  ]);
+  const { user, supabase, addActivity, knowledgeBase } = useApp();
+
+  // LOAD LEADS FROM DATABASE
+  useEffect(() => {
+    const loadLeads = async () => {
+        if (!user) return;
+        const { data, error } = await supabase
+            .from('leads')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (data && !error && data.length > 0) {
+            setLeads(data);
+        }
+    };
+    loadLeads();
+  }, [user]);
+
+  const handleScanLeads = async () => {
+    setIsScanning(true);
+    addActivity("Neural Scraper: Scanning regional market nodes...", "system");
+    
+    setTimeout(async () => {
+        const newLead = {
+            name: "Dr. Caner Öz",
+            source: "LinkedIn / Referral",
+            distance: "1.2km",
+            signal: "ELITE",
+            intent: "Looking for high-end aesthetic dental partnership",
+            score: 99,
+            status: 'New'
+        };
+        
+        setLeads(prev => [newLead, ...prev]);
+        if (user) {
+            await supabase.from('leads').insert({ ...newLead, user_id: user.id });
+        }
+        
+        setIsScanning(false);
+        addActivity(`High-Value Lead Detected: ${newLead.name}`, "system");
+        toast("Market Intelligence: Elite Lead Found", "success");
+    }, 3000);
+  };
+
+  const draftNeuralOffer = (leadId: number) => {
+    const lead = leads[leadId];
+    const kbNotes = knowledgeBase.map(k => k.content).join(" ");
+    const offer = `AIVA Neural Draft: Sayın ${lead.name}, ${lead.intent} konulu talebinizi sistemimiz yakaladı. Kurumsal hafızamızdaki verilere göre size özel bir çözüm hazırladık. (KB Ref: ${kbNotes.substring(0, 50)}...)`;
+    
+    toast("Neural Offer Drafted using Knowledge Base", "success");
+    addActivity(`Offer Prepared for ${lead.name}`, "system");
+    return offer;
+  };
 
   const handleGlobalRescan = () => {
     setIsScanning(true);
@@ -113,6 +172,29 @@ export default function ReviewsPage() {
     }, 3000);
   };
 
+  const [isCampaignActive, setIsCampaignActive] = useState(false);
+  const [campaignProgress, setCampaignProgress] = useState(0);
+
+  const handleStartCampaign = () => {
+    setIsCampaignActive(true);
+    setCampaignProgress(0);
+    addActivity("Neural Multiplier: Launching batch review sequence for 124 leads", "sync");
+    toast("Reputation Multiplier Started", "success");
+    
+    const interval = setInterval(() => {
+        setCampaignProgress(prev => {
+            if (prev >= 100) {
+                clearInterval(interval);
+                setIsCampaignActive(false);
+                addActivity("Campaign Complete: +42 New Review Drafts Pending Approval", "system");
+                toast("Batch Campaign Success", "success");
+                return 100;
+            }
+            return prev + 5;
+        });
+    }, 500);
+  };
+
   return (
     <div className="max-w-[1600px] animate-in fade-in duration-1000">
       <PageHeader 
@@ -120,6 +202,14 @@ export default function ReviewsPage() {
         statusText={isScanning ? "Scanning Active Platforms..." : "Brand Sentiment Index: Elite"} 
         action={
           <div className="flex items-center gap-4">
+             <button 
+                onClick={handleStartCampaign}
+                disabled={isCampaignActive}
+                className="flex items-center gap-2 bg-[#00ffd1] text-black px-6 py-3 rounded-xl text-[10px] font-mono font-black uppercase tracking-widest hover:bg-white transition-all shadow-[0_0_30px_rgba(0,255,209,0.3)] disabled:opacity-50"
+             >
+                {isCampaignActive ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                {isCampaignActive ? `Syncing ${campaignProgress}%` : 'Launch Multiplier Campaign'}
+             </button>
              <button 
                 onClick={handleGlobalRescan}
                 disabled={isScanning}
@@ -159,216 +249,206 @@ export default function ReviewsPage() {
                             {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
                                 <div key={i} className="w-1.5 h-12 bg-white/5 rounded-full flex items-end overflow-hidden">
                                     <div 
-                                        className={`w-full rounded-full transition-all duration-1000 ${isRecoveryActive ? 'bg-red-500' : 'bg-[#00ffd1]'} ${isScanning ? 'animate-bounce' : ''}`} 
-                                        style={{ height: `${isScanning ? Math.random() * 100 : h}%` }} 
+                                        className={`w-full ${isRecoveryActive && i > 4 ? 'bg-red-500' : 'bg-[#00ffd1]'} transition-all duration-1000`} 
+                                        style={{ height: `${h}%` }} 
                                     />
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
-                <div className="h-20 w-px bg-white/5 hidden lg:block" />
-                <div className="space-y-6 relative z-10 text-right">
-                    <div className="flex gap-6 justify-end">
-                        <div className="text-center">
-                            <Smile size={16} className={`${isRecoveryActive ? 'text-white/20' : 'text-[#00ffd1]'} mx-auto mb-2 transition-all`} />
-                            <p className="text-[10px] font-black text-white">84%</p>
-                        </div>
-                        <div className="text-center opacity-40">
-                            <Meh size={16} className="text-white mx-auto mb-2" />
-                            <p className="text-[10px] font-black text-white">12%</p>
-                        </div>
-                        <div className={`text-center ${isRecoveryActive ? 'animate-bounce' : 'opacity-40'}`}>
-                            <Frown size={16} className="text-red-500 mx-auto mb-2" />
-                            <p className="text-[10px] font-black text-white">4%</p>
-                        </div>
+
+                <div className="text-right space-y-4 relative z-10">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Autonomous Status</p>
+                        <p className="text-xs font-black text-white uppercase italic">{isRecoveryActive ? 'Active Recovery' : 'Monitoring'}</p>
                     </div>
-                </div>
-            </div>
-         </div>
-         <div className="col-span-12 lg:col-span-4">
-            <div className={`glass-panel p-8 h-full relative overflow-hidden transition-all duration-700 ${isRecoveryActive ? 'bg-red-500/20 border-red-500/40' : 'bg-[#00ffd1]/5 border-[#00ffd1]/20'}`}>
-                <div className="flex items-center gap-3 mb-4 relative z-10">
-                    <Zap size={16} className={isRecoveryActive ? 'text-white' : 'text-[#00ffd1]'} />
-                    <h3 className={`text-[10px] font-mono font-black tracking-[0.3em] uppercase italic ${isRecoveryActive ? 'text-white' : 'text-[#00ffd1]'}`}>
-                        {isRecoveryActive ? 'Neural Recovery Active' : 'Strategic Monitor'}
-                    </h3>
-                </div>
-                <p className="text-[10px] font-mono text-white/60 leading-relaxed uppercase relative z-10 mb-6">
-                    {isRecoveryActive 
-                        ? 'AIVA is currently orchestrating a sentiment correction strategy for negative mentions.' 
-                        : 'Currently tracking 2,142 brand mentions. AI-Drafting is prioritized for unresolved feedback.'}
-                </p>
-                {!isRecoveryActive && (
-                    <button 
-                        onClick={handleInitiateRecovery}
-                        className="w-full py-3 bg-red-500/20 border border-red-500/40 text-red-500 rounded-xl text-[10px] font-mono font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-[0_0_20px_rgba(239,68,68,0.2)]"
-                    >
-                        Initiate Neural Recovery
-                    </button>
-                )}
-            </div>
-         </div>
-      </div>
-      
-      {/* LEAD ACQUISITION ENGINE - GROUNDBREAKING FEATURE */}
-      <div className="mt-16 glass-panel p-10 bg-gradient-to-br from-[#00ffd1]/10 to-transparent border-[#00ffd1]/20 relative overflow-hidden">
-         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,255,209,0.05)_0%,transparent_50%)]" />
-         
-         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 relative z-10">
-            <div className="space-y-2">
-               <div className="flex items-center gap-3">
-                  <Zap size={22} className="text-[#00ffd1]" />
-                  <h3 className="text-2xl font-syne font-black italic uppercase tracking-tighter text-white">Lead Acquisition Engine</h3>
-               </div>
-               <p className="text-[10px] font-mono text-white/40 uppercase tracking-[0.3em]">Neural Prospecting: ACTIVE // Sector: Dental_Clinic</p>
-            </div>
-            <button 
-               onClick={() => {
-                  toast("Initializing Global Lead Scan...", "info");
-                  setIsScanning(true);
-                  setTimeout(() => setIsScanning(false), 3000);
-               }}
-               className="bg-[#00ffd1] text-black px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all shadow-[0_0_30px_#00ffd144]"
-            >
-               {isScanning ? 'Scraping Market...' : 'Initiate Autonomous Prospecting'}
-            </button>
-         </div>
-
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-            {[
-               { name: "Ahmet Yılmaz", source: "Google Maps", distance: "2.4km", signal: "HIGH", intent: "Searching for 'İmplant Fiyatları'", score: 98 },
-               { name: "Ecem S.", source: "Instagram Ads", distance: "N/A", signal: "MED", intent: "Interacted with Dental Post", score: 82 },
-               { name: "Global Med Center", source: "B2B Directory", distance: "5.1km", signal: "HIGH", intent: "Competitor review drop detected", score: 94 }
-            ].map((lead, i) => (
-               <div key={i} className="glass-panel p-6 bg-black/60 border-white/5 hover:border-[#00ffd1]/40 transition-all group">
-                  <div className="flex justify-between items-start mb-6">
-                     <div className="space-y-1">
-                        <h4 className="text-sm font-black text-white group-hover:text-[#00ffd1] transition-colors">{lead.name}</h4>
-                        <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest">{lead.source} // {lead.distance}</p>
-                     </div>
-                     <div className="text-right">
-                        <span className="text-[8px] font-mono text-[#00ffd1] font-black">{lead.score}% MATCH</span>
-                        <div className="h-1 w-12 bg-white/5 rounded-full mt-1 overflow-hidden">
-                           <div className="h-full bg-[#00ffd1]" style={{ width: `${lead.score}%` }} />
-                        </div>
-                     </div>
-                  </div>
-                  
-                  <div className="p-4 bg-white/5 rounded-xl mb-6">
-                     <p className="text-[10px] text-white/60 font-mono italic">"AIVA Detect: {lead.intent}"</p>
-                  </div>
-
-                  <button className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-mono font-black uppercase tracking-widest text-white/40 hover:bg-[#00ffd1] hover:text-black hover:border-[#00ffd1] transition-all">
-                     Draft Neural Offer
-                  </button>
-               </div>
-            ))}
-         </div>
-      </div>
-
-      <div className="mt-16 grid gap-8">
-        {inbox.map((item) => (
-          <div key={item.id} className="glass-panel p-10 flex flex-col lg:flex-row gap-12 hover:border-[#00ffd1]/20 transition-all group relative overflow-hidden bg-black/40">
-            {/* REVIEW SIDE */}
-            <div className="w-full lg:w-1/3 space-y-8">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                    <span className="text-xl font-black text-white tracking-tight uppercase italic">{item.user}</span>
-                    <div className="flex items-center gap-3 text-[8px] font-mono text-white/20 uppercase tracking-widest">
-                        <Globe size={10} />
-                        <span>{item.source}</span>
-                        <span>•</span>
-                        <span>{item.time}</span>
-                    </div>
-                </div>
-                <div className={`text-[8px] font-black px-3 py-1 rounded border ${
-                    item.sentiment === 'POSITIVE' ? 'text-[#00ffd1] border-[#00ffd1]/20 bg-[#00ffd1]/5' : 
-                    'text-red-500 border-red-500/20 bg-red-500/5'
-                }`}>
-                    {item.sentiment}
-                </div>
-              </div>
-              
-              <div className="flex gap-1.5">
-                {[...Array(5)].map((_, idx) => (
-                    <Star key={idx} size={12} fill={idx < item.rating ? "#00ffd1" : "transparent"} className={idx < item.rating ? "text-[#00ffd1]" : "text-white/10"} />
-                ))}
-              </div>
-
-              <p className="text-sm text-white/60 leading-relaxed italic border-l-2 border-[#00ffd1]/20 pl-6 py-2 group-hover:border-[#00ffd1]/60 transition-all bg-white/[0.02] rounded-r-2xl">
-                "{item.comment}"
-              </p>
-            </div>
-
-            {/* DRAFTING SIDE (FUNCTIONAL) */}
-            <div className="flex-1 bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-10 relative">
-              <div className="flex justify-between items-center mb-8">
-                <div className="flex items-center gap-4">
-                    <div className="p-2 bg-[#00ffd1]/10 rounded-lg text-[#00ffd1]"><Zap size={14} /></div>
-                    <div className="flex gap-2">
-                        {["Empathetic", "Professional", "Strategic"].map(tone => (
-                            <button 
-                                key={tone}
-                                onClick={() => setSelectedResponseTone(tone)}
-                                className={`px-4 py-2 rounded-xl text-[9px] font-mono font-black uppercase tracking-widest transition-all ${selectedResponseTone === tone ? 'bg-[#00ffd1] text-black' : 'bg-white/5 text-white/20 hover:text-white'}`}
-                            >
-                                {tone}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div className="text-right">
-                    <p className="text-[8px] font-mono text-white/20 uppercase mb-1">Safety Index</p>
-                    <p className="text-xs font-black text-[#00ffd1] tracking-tighter">{item.safetyScore}%</p>
-                </div>
-              </div>
-              
-              <div className="relative mb-8 min-h-[140px]">
-                {!activeDrafts[item.id] ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 border border-white/5 border-dashed rounded-3xl">
+                    {!isRecoveryActive ? (
                         <button 
-                            onClick={() => generateDraft(item.id)}
-                            disabled={draftingId === item.id}
-                            className="flex items-center gap-3 text-[10px] font-mono font-black uppercase tracking-widest text-white/40 hover:text-[#00ffd1] transition-all"
+                            onClick={handleInitiateRecovery}
+                            className="bg-white/5 border border-white/10 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 hover:border-red-500/40 transition-all"
                         >
-                            {draftingId === item.id ? <><Loader2 size={14} className="animate-spin" /> Analyzing Intent...</> : <><RefreshCcw size={14} /> Generate Neural Reply</>}
+                            Force Neural Recovery
                         </button>
-                    </div>
-                ) : (
-                    <textarea 
-                        value={activeDrafts[item.id]}
-                        onChange={(e) => setActiveDrafts({ ...activeDrafts, [item.id]: e.target.value })}
-                        className="w-full h-32 bg-black/40 border border-[#00ffd1]/10 rounded-3xl p-6 text-sm text-white/80 leading-relaxed font-mono focus:border-[#00ffd1]/40 outline-none transition-all resize-none"
-                    />
-                )}
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <button 
-                    onClick={() => handleSync(item.id)}
-                    disabled={!activeDrafts[item.id] || syncingId === item.id}
-                    className="flex-1 bg-white text-black py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-[#00ffd1] transition-all shadow-[0_0_40px_rgba(255,255,255,0.1)] disabled:opacity-20 flex items-center justify-center gap-3"
-                >
-                    {syncingId === item.id ? <><Loader2 size={16} className="animate-spin" /> Syncing with {item.source}...</> : <><Send size={16} fill="black" /> Approve & Deploy</>}
-                </button>
-                <button 
-                    onClick={() => {
-                        const newDrafts = { ...activeDrafts };
-                        delete newDrafts[item.id];
-                        setActiveDrafts(newDrafts);
-                    }}
-                    className="p-5 bg-white/5 border border-white/10 rounded-2xl text-white/20 hover:text-red-500 hover:border-red-500/20 transition-all"
-                >
-                    <RefreshCcw size={16} />
-                </button>
-              </div>
+                    ) : (
+                        <div className="flex items-center gap-2 text-red-500 font-mono text-[9px] animate-pulse">
+                            <Activity size={12} /> SECURING BRAND ASSETS...
+                        </div>
+                    )}
+                </div>
             </div>
+         </div>
+
+         <div className="col-span-12 lg:col-span-4">
+            <div className="glass-panel p-8 bg-[#00ffd1]/5 border-[#00ffd1]/20 h-full">
+                <h3 className="text-[10px] font-mono font-black text-[#00ffd1] tracking-[0.3em] uppercase italic mb-6">Mastery Insight</h3>
+                <p className="text-xs text-white/60 leading-relaxed italic">
+                    "AIVA son 24 saatte sosyal medyadaki marka algınızı %2.4 yükseltti. Olumsuz sinyaller anında nöral filtreleme ile kontrol altına alınıyor."
+                </p>
+                <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
+                    <span className="text-[9px] font-mono text-white/20 uppercase">Safety Rating</span>
+                    <span className="text-sm font-black text-[#00ffd1]">ELITE (99.1)</span>
+                </div>
+            </div>
+         </div>
+      </div>
+
+      <div className="grid grid-cols-12 gap-8">
+        {/* REVIEWS INBOX */}
+        <div className="col-span-12 lg:col-span-7 space-y-6">
+          <div className="flex items-center justify-between mb-2">
+             <div className="flex items-center gap-3">
+                <MessageSquare size={18} className="text-[#00ffd1]" />
+                <h2 className="text-xl font-syne font-black italic uppercase tracking-tighter text-white">Reputation Feed</h2>
+                <div className="flex gap-2">
+                    {["Empathetic", "Professional", "Strategic", "Contrast", "Hidden Truth"].map(tone => (
+                        <button 
+                            key={tone}
+                            onClick={() => setSelectedResponseTone(tone)}
+                            className={`px-4 py-2 rounded-lg text-[9px] font-mono font-black uppercase transition-all ${selectedResponseTone === tone ? 'bg-[#00ffd1] text-black shadow-[0_0_15px_rgba(0,255,209,0.3)]' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+                        >
+                            {tone}
+                        </button>
+                    ))}
+                </div>
+             </div>
           </div>
-        ))}
+
+          <div className="p-6 bg-[#00ffd1]/5 border border-[#00ffd1]/10 rounded-2xl">
+              <div className="flex items-center gap-2 mb-3">
+                  <Zap size={12} className="text-[#00ffd1]" />
+                  <span className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest font-black">Narrative Strategy Active</span>
+              </div>
+              <p className="text-[10px] text-white/40 italic leading-relaxed">
+                  {selectedResponseTone === "Contrast" ? "Dünya olduğu gibi ↔ Dünya olabileceği gibi zıtlığını kullanarak güven inşa ediliyor." :
+                   selectedResponseTone === "Hidden Truth" ? "İzleyicide 'ben bunu bilmiyordum' hissi yaratarak otorite kuruluyor." :
+                   "Standart empati protokolü ile kullanıcı deneyimi normalize ediliyor."}
+              </p>
+          </div>
+
+          <div className="space-y-4">
+            {inbox.map((item) => (
+              <div key={item.id} className={`glass-panel p-8 space-y-6 group transition-all duration-500 hover:border-white/20 ${item.sentiment === 'NEGATIVE' ? 'border-red-500/20' : ''}`}>
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white/10 to-transparent flex items-center justify-center border border-white/5 text-lg font-black italic text-white/40 group-hover:text-[#00ffd1] transition-all">
+                      {item.user[0]}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-3">
+                        {item.user}
+                        <span className={`text-[8px] px-2 py-0.5 rounded-full font-mono ${item.sentiment === 'POSITIVE' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400 animate-pulse'}`}>
+                          {item.sentiment}
+                        </span>
+                      </h4>
+                      <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest mt-1">Via {item.source} • {item.time}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={12} className={i < item.rating ? 'text-[#00ffd1] fill-[#00ffd1]' : 'text-white/5'} />
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-sm text-white/60 leading-relaxed italic border-l-2 border-white/5 pl-6 py-2">
+                  "{item.comment}"
+                </p>
+
+                <div className="flex items-center gap-4 pt-2">
+                  {activeDrafts[item.id] ? (
+                    <div className="flex-1 animate-in slide-in-from-left-4 duration-500">
+                        <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-[0.4em] italic">Neural Draft: {selectedResponseTone}</span>
+                                <Fingerprint size={14} className="text-white/10" />
+                            </div>
+                            <p className="text-xs text-white/80 leading-relaxed italic">"{activeDrafts[item.id]}"</p>
+                            <div className="flex gap-3 justify-end">
+                                <button className="text-[9px] font-mono text-white/20 hover:text-white uppercase tracking-widest">Discard</button>
+                                <button 
+                                    onClick={() => handleSync(item.id)}
+                                    disabled={syncingId === item.id}
+                                    className="px-6 py-2 bg-[#00ffd1] text-black rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_#00ffd144]"
+                                >
+                                    {syncingId === item.id ? <Loader2 size={12} className="animate-spin" /> : 'Deploy Sync'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => generateDraft(item.id)}
+                      disabled={draftingId === item.id}
+                      className="flex items-center gap-3 bg-white/5 border border-white/10 text-white/40 px-6 py-3 rounded-xl text-[10px] font-mono font-black uppercase tracking-widest hover:text-white hover:border-white/20 transition-all disabled:opacity-50"
+                    >
+                      {draftingId === item.id ? <Loader2 size={14} className="animate-spin" /> : <Brain size={14} />}
+                      Craft Neural Response
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* LEAD ACQUISITION ENGINE */}
+        <div className="col-span-12 lg:col-span-5 space-y-6">
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                    <Globe size={18} className="text-[#00ffd1]" />
+                    <h2 className="text-xl font-syne font-black italic uppercase tracking-tighter text-white">Neural Lead Gen</h2>
+                </div>
+                <button 
+                    onClick={handleScanLeads}
+                    disabled={isScanning}
+                    className="flex items-center gap-2 bg-[#00ffd1] text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
+                >
+                    {isScanning ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />} Scan Regional Nodes
+                </button>
+            </div>
+
+            <div className="glass-panel p-6 bg-black/40 border-white/5 overflow-hidden relative">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,255,209,0.05)_0%,transparent_50%)]" />
+                <div className="space-y-4 relative z-10">
+                    {leads.map((lead, i) => (
+                        <div key={i} className="p-5 bg-white/5 border border-white/5 rounded-2xl hover:border-[#00ffd1]/20 transition-all group">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h5 className="text-sm font-black text-white group-hover:text-[#00ffd1] transition-all">{lead.name}</h5>
+                                    <p className="text-[9px] font-mono text-white/20 uppercase tracking-widest">{lead.source} • {lead.distance}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs font-black text-[#00ffd1] italic">%{lead.score}</span>
+                                    <p className="text-[8px] font-mono text-white/20 uppercase">Neural Fit</p>
+                                </div>
+                            </div>
+                            <div className="p-3 bg-black/40 rounded-xl mb-4">
+                                <p className="text-[10px] text-white/40 italic flex items-center gap-2">
+                                    <Activity size={10} className="text-[#00ffd1]" /> {lead.intent}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    const draft = draftNeuralOffer(i);
+                                    alert(draft);
+                                }}
+                                className="w-full py-3 border border-[#00ffd1]/20 text-[#00ffd1] text-[9px] font-black uppercase tracking-widest hover:bg-[#00ffd1] hover:text-black transition-all rounded-xl"
+                            >
+                                Dispatch Neural Offer
+                            </button>
+                        </div>
+                    ))}
+                    {isScanning && (
+                        <div className="py-20 flex flex-col items-center justify-center space-y-4 animate-pulse">
+                            <div className="w-12 h-12 border-2 border-[#00ffd1] border-t-transparent rounded-full animate-spin" />
+                            <p className="text-[10px] font-mono text-[#00ffd1] uppercase tracking-[0.4em]">Scanning Market Matrix...</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
       </div>
     </div>
   );
 }
-
-

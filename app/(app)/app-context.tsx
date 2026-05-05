@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { supabase, DBActivityLog, DBKnowledgeEntry } from "@/lib/supabase";
+import { useToast } from "@/lib/toast-context";
 
 export interface Sector {
   id: string;
@@ -32,12 +33,16 @@ interface EfficiencyStats {
   hoursSaved: number;
   successRate: number;
   tasksCompleted: number;
+  conversionRate: number;
 }
 
 interface AppContextType {
+  user: any;
+  supabase: any;
   selectedSector: Sector;
   activityLogs: ActivityLog[];
   knowledgeBase: KnowledgeEntry[];
+  analyticsEvents: any[];
   efficiencyStats: EfficiencyStats;
   deploymentQueue: string[];
   isDbConnected: boolean;
@@ -48,6 +53,9 @@ interface AppContextType {
   updateMetrics: (update: Partial<EfficiencyStats>) => void;
   addToQueue: (assetName: string) => void;
   clearQueue: () => void;
+  trackEvent: (name: string, metadata?: any) => Promise<void>;
+  autonomousPlanning: (situation: string) => Promise<any>;
+  toast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -83,28 +91,44 @@ const SECTORS: Sector[] = [
 ];
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { toast } = useToast();
   const [selectedSector, setSelectedSector] = useState<Sector>(SECTORS[0]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeEntry[]>([]);
   const [deploymentQueue, setDeploymentQueue] = useState<string[]>([]);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [efficiencyStats, setEfficiencyStats] = useState<EfficiencyStats>({
-    hoursSaved: 140.4,
+    hoursSaved: 124.5,
     successRate: 98.2,
-    tasksCompleted: 420
+    tasksCompleted: 452,
+    conversionRate: 12.4
   });
+
+  const [user, setUser] = useState<any>(null);
+  const [analyticsEvents, setAnalyticsEvents] = useState<any[]>([]);
 
   // ─── Load data from Supabase on mount ────────────────────────────────────
   useEffect(() => {
     const loadInitialData = async () => {
-      // Check if env variables exist
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || 
           process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://YOUR_PROJECT_ID.supabase.co') {
-        console.log('[AIVA] Running in offline mode — Supabase not configured.');
         return;
       }
 
       try {
+        // Fetch User
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+
+        // Load analytics events
+        const { data: events } = await supabase
+          .from('analytics_events')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        
+        if (events) setAnalyticsEvents(events);
+
         // Load activity logs
         const { data: logs, error: logsError } = await supabase
           .from('activity_logs')
@@ -131,77 +155,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setKnowledgeBase(knowledge);
         }
 
-        // Load deployment queue
-        const { data: queue, error: queueError } = await supabase
-          .from('deployment_queue')
-          .select('asset_name')
-          .eq('status', 'queued');
-
-        if (!queueError && queue) {
-          setDeploymentQueue(queue.map(q => q.asset_name));
-        }
-
-        // Load efficiency metrics
-        const { data: metrics } = await supabase
-          .from('efficiency_metrics')
-          .select('*')
-          .limit(1)
-          .single();
-
-        if (metrics) {
-          setEfficiencyStats({
-            hoursSaved: metrics.hours_saved,
-            successRate: metrics.success_rate,
-            tasksCompleted: metrics.tasks_completed
-          });
-        }
-
         setIsDbConnected(true);
-        console.log('[AIVA] Neural Database: Connected ✓');
       } catch (err) {
-        console.log('[AIVA] Offline mode — will sync when Supabase is configured.');
+        console.error('[AIVA] Database Init Error:', err);
       }
     };
 
     loadInitialData();
   }, []);
 
-  // ─── Realtime subscription ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isDbConnected) return;
-
-    const channel = supabase
-      .channel('aiva-neural-stream')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'activity_logs' },
-        (payload) => {
-          const newLog = payload.new as DBActivityLog;
-          setActivityLogs(prev => [{
-            id: newLog.id,
-            text: newLog.text,
-            type: newLog.type,
-            time: 'Just Now'
-          }, ...prev].slice(0, 50));
-        }
-      )
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'knowledge_base' },
-        (payload) => {
-          setKnowledgeBase(prev => [payload.new as KnowledgeEntry, ...prev]);
-        }
-      )
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'deployment_queue' },
-        (payload) => {
-          setDeploymentQueue(prev => [...new Set([...prev, payload.new.asset_name])]);
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [isDbConnected]);
-
   // ─── Actions ─────────────────────────────────────────────────────────────
+  const trackEvent = useCallback(async (name: string, metadata: any = {}) => {
+    const newEvent = {
+        id: Math.random().toString(36).substr(2, 9),
+        name,
+        metadata,
+        created_at: new Date().toISOString()
+    };
+
+    // Optimistic update
+    setAnalyticsEvents(prev => [newEvent, ...prev].slice(0, 100));
+
+    if (isDbConnected && user) {
+        await supabase.from('analytics_events').insert({
+            user_id: user.id,
+            name,
+            metadata
+        });
+    }
+
+    // Add to activity log for visibility
+    addActivity(`Event Logged: ${name.toUpperCase()}`, 'system');
+  }, [isDbConnected, user]);
+
   const setSector = (sector: Sector) => setSelectedSector(sector);
 
   const addActivity = useCallback(async (text: string, type: ActivityLog['type']) => {
@@ -212,10 +198,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       time: 'Just Now'
     };
 
-    // Optimistic update
     setActivityLogs(prev => [newLog, ...prev].slice(0, 50));
 
-    // Persist to Supabase if connected
     if (isDbConnected) {
       await supabase.from('activity_logs').insert({ text, type, time: 'Just Now' });
     }
@@ -230,15 +214,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       source
     };
 
-    // Optimistic update
     setKnowledgeBase(prev => [entry, ...prev]);
     
-    // Persist to Supabase
     if (isDbConnected) {
       await supabase.from('knowledge_base').insert({ content, sector, tags, source });
     }
 
-    // Also log the activity
     await addActivity(`Knowledge Injected [${source}]: "${content.substring(0, 40)}..."`, 'system');
   }, [isDbConnected, addActivity]);
 
@@ -258,7 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isDbConnected) {
       await supabase.from('deployment_queue').upsert({ asset_name: assetName, status: 'queued' });
     }
-    await addActivity(`New Asset Ready for Sync: ${assetName}`, 'sync');
+    addActivity(`New Asset Ready for Sync: ${assetName}`, 'sync');
   }, [isDbConnected, addActivity]);
 
   const clearQueue = useCallback(async () => {
@@ -268,11 +249,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [isDbConnected]);
 
+  const autonomousPlanning = async (situation: string) => {
+    try {
+        const res = await fetch('/api/reason', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ situation, niche: selectedSector })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            addActivity(`Neural Planner: Strategy formulated for "${situation.slice(0, 20)}..."`, 'system');
+            return data;
+        }
+    } catch (e) {
+        console.error("Autonomous planning failed:", e);
+    }
+    return null;
+  };
+
   return (
     <AppContext.Provider value={{ 
+      user,
+      supabase,
       selectedSector, 
       activityLogs,
       knowledgeBase,
+      analyticsEvents,
       efficiencyStats, 
       deploymentQueue,
       isDbConnected,
@@ -282,7 +284,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deleteKnowledge,
       updateMetrics,
       addToQueue,
-      clearQueue
+      clearQueue,
+      trackEvent,
+      autonomousPlanning,
+      toast
     }}>
       {children}
     </AppContext.Provider>

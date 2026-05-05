@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useApp } from "../app-context";
@@ -32,15 +32,95 @@ import {
 export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { selectedSector, activityLogs, efficiencyStats, addActivity } = useApp();
+  const { selectedSector, activityLogs, efficiencyStats, addActivity, analyticsEvents, trackEvent, supabase, autonomousPlanning } = useApp();
+  const [leads, setLeads] = useState<any[]>([]);
   const [pulseIndex, setPulseIndex] = useState(0);
+  const [neuralPlan, setNeuralPlan] = useState<any>(null);
 
+  // LOAD REAL DATA FOR ADVISOR
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPulseIndex(prev => (prev + 1) % 4);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    const loadData = async () => {
+        if (!supabase) return;
+        const { data: leadData } = await supabase.from('leads').select('*').limit(5);
+        if (leadData) setLeads(leadData);
+    };
+    loadData();
+  }, [supabase]);
+
+  // SITUATION AWARENESS: Auto-trigger planning for anomalies
+  useEffect(() => {
+    const detectAndPlan = async () => {
+        if (efficiencyStats.conversionRate < 10) { // e.g. Anomaly detected
+            const plan = await autonomousPlanning("Low lead conversion detected in regional nodes. Need aggressive multi-platform recovery strategy.");
+            setNeuralPlan(plan);
+        }
+    };
+    detectAndPlan();
+  }, [efficiencyStats.conversionRate]);
+
+  const neuralROI = useMemo(() => {
+    const hoursSaved = (efficiencyStats.tasksCompleted * 0.5).toFixed(1);
+    const estimatedValue = (efficiencyStats.tasksCompleted * 45).toLocaleString();
+    return { hoursSaved, estimatedValue };
+  }, [efficiencyStats]);
+
+  const dynamicInsights = useMemo(() => {
+    const insights = [];
+    
+    // Injected Intelligence
+    insights.push({ 
+        id: 'anomaly',
+        type: 'ANOMALY', 
+        title: 'Conversion Dip Detected', 
+        desc: neuralPlan ? "Neural Planner has formulated a recovery strategy." : "AIVA is analyzing current bottleneck nodes.", 
+        icon: AlertCircle, 
+        action: neuralPlan ? "Apply Neural Strategy" : "Analyzing..."
+    });
+
+    const ctaClicks = analyticsEvents.filter(e => e.name === 'cta_click').length;
+    const newLeads = leads.filter(l => l.status === 'New').length;
+
+    if (newLeads > 0) {
+        insights.push({
+            id: 'leads',
+            title: `PROBLEM: Düşük Müşteri Akışı Saptandı`,
+            desc: `ÇÖZÜM: Neural Scraper bölgeyi taradı ve ${newLeads} yüksek potansiyelli aday buldu. Otomatik teklif sürecini başlatmak ister misin?`,
+            icon: Sparkles,
+            action: 'Sorunu Gider'
+        });
+    }
+
+    if (ctaClicks > 5) {
+        insights.push({
+            id: 'conversion',
+            title: 'DARBOĞAZ: Manuel Randevu Kayıpları',
+            desc: `Web sitende yüksek trafik var ama randevular manuel. Vapi sesli asistanını 7/24 aktif ederek bu kaçağı sıfırlayalım.`,
+            icon: Zap,
+            action: 'Otonom Çözümü Devreye Al'
+        });
+    }
+
+    if (insights.length === 0) {
+        insights.push({
+            id: 'baseline',
+            title: 'Sistem Durumu: Optimizasyon Gerekmiyor',
+            desc: 'Şu an sistem %98 verimlilikle çalışıyor. AI ajanların tüm süreçleri sorunsuz yönetiyor.',
+            icon: ShieldCheck,
+            action: 'Derin Taramayı Başlat'
+        });
+    }
+
+    return insights;
+  }, [analyticsEvents, leads, efficiencyStats, neuralPlan]);
+
+  const handleExecuteAction = async (id: string) => {
+    addActivity(`Neural Execution Authorized: ${id}`, 'system');
+    toast(`Executing AI Strategy: ${id}`, "success");
+    await trackEvent('advisor_action_execute', { insight_id: id });
+    
+    if (id === 'leads') router.push('/reviews');
+    if (id === 'conversion') router.push('/vapi');
+  };
 
   const pipelineNodes = [
     { id: 'campaign', label: 'Campaign Start', icon: Rocket, detail: 'Summer Growth Active' },
@@ -98,6 +178,55 @@ export default function DashboardPage() {
         {/* PROACTIVE INTELLIGENCE COLUMN */}
         <div className="col-span-12 lg:col-span-8 space-y-8">
            
+           {/* NEURAL ROI & BUSINESS VALUE MATRIX */}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="glass-panel p-8 space-y-6 bg-[#00ffd1]/5 border-[#00ffd1]/20 group hover:bg-[#00ffd1]/10 transition-all duration-700">
+                  <div className="flex items-center gap-3">
+                      <Cpu size={18} className="text-[#00ffd1]" />
+                      <h3 className="text-[10px] font-mono font-black text-white/40 tracking-[0.4em] uppercase italic">Saved Man-Hours</h3>
+                  </div>
+                  <div className="flex items-end justify-between">
+                      <p className="text-5xl font-black text-white italic tracking-tighter">+{neuralROI.hoursSaved}h</p>
+                      <div className="text-right">
+                          <p className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest font-black">Efficiency Lift</p>
+                          <p className="text-xs font-bold text-white/60">+84%</p>
+                      </div>
+                  </div>
+                  <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: '84%' }}
+                          transition={{ duration: 2, ease: "easeOut" }}
+                          className="h-full bg-gradient-to-r from-transparent via-[#00ffd1] to-[#00ffd1] shadow-[0_0_20px_rgba(0,255,209,0.5)]"
+                      />
+                  </div>
+                  <p className="text-[9px] font-mono text-white/20 italic">AIVA has autonomously handled {efficiencyStats.tasksCompleted} repetitive business nodes.</p>
+              </div>
+
+              <div className="glass-panel p-8 space-y-6 bg-amber-500/5 border-amber-500/20 group hover:bg-amber-500/10 transition-all duration-700">
+                  <div className="flex items-center gap-3">
+                      <Rocket size={18} className="text-amber-500" />
+                      <h3 className="text-[10px] font-mono font-black text-white/40 tracking-[0.4em] uppercase italic">Estimated Growth Value</h3>
+                  </div>
+                  <div className="flex items-end justify-between">
+                      <p className="text-5xl font-black text-white italic tracking-tighter">${neuralROI.estimatedValue}</p>
+                      <div className="text-right">
+                          <p className="text-[9px] font-mono text-amber-500 uppercase tracking-widest font-black">Active ROI</p>
+                          <p className="text-xs font-bold text-white/60">4.8x Cap</p>
+                      </div>
+                  </div>
+                  <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: '62%' }}
+                          transition={{ duration: 2, ease: "easeOut" }}
+                          className="h-full bg-gradient-to-r from-transparent via-amber-500 to-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.5)]"
+                      />
+                  </div>
+                  <p className="text-[9px] font-mono text-white/20 italic">Based on current lead velocity and conversion optimization loops.</p>
+              </div>
+           </div>
+
            {/* PREDICTIVE GROWTH ENGINE */}
            <div className="glass-panel p-10 space-y-8 bg-gradient-to-br from-white/[0.02] to-transparent relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00ffd1]/30 to-transparent" />
@@ -188,10 +317,7 @@ export default function DashboardPage() {
               </div>
               
               <div className="space-y-6 relative z-10">
-                 {[
-                    { id: '1', title: 'Conversion Drift Detected', desc: 'Web sitesinde ziyaretçiler randevu almadan çıkıyor. Randevu butonunu kırmızıya çevirip yukarı almamı ister misin?', icon: AlertCircle, action: 'Execute Pivot' },
-                    { id: '2', title: 'Sector Opportunity', desc: 'Bölgendeki rakip kliniklerin Pazar günleri kapalı olduğunu fark ettim. Pazar mesaisi ekleyerek fark yaratabiliriz.', icon: Sparkles, action: 'Draft Strategy' }
-                 ].map((advice, i) => (
+                 {dynamicInsights.map((advice, i) => (
                     <div key={i} className="flex gap-6 p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-[#00ffd1]/20 transition-all group">
                        <div className="p-4 bg-black rounded-2xl text-[#00ffd1] group-hover:scale-110 transition-transform h-fit">
                           <advice.icon size={22} />
@@ -200,7 +326,10 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-black text-white uppercase tracking-wider">{advice.title}</h4>
                           <p className="text-[11px] text-white/40 leading-relaxed italic">{advice.desc}</p>
                           <div className="pt-2">
-                             <button className="text-[9px] font-mono font-black text-[#00ffd1] uppercase tracking-widest hover:underline flex items-center gap-2">
+                             <button 
+                                onClick={() => handleExecuteAction(advice.id)}
+                                className="text-[9px] font-mono font-black text-[#00ffd1] uppercase tracking-widest hover:underline flex items-center gap-2"
+                             >
                                 {advice.action} <ChevronRight size={12} />
                              </button>
                           </div>

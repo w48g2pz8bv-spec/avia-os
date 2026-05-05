@@ -20,7 +20,8 @@ import {
   Trash2,
   Wand2,
   Zap,
-  Rocket
+  Rocket,
+  ArrowUpRight
 } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
 
@@ -31,11 +32,13 @@ type Component = {
   id: string;
   type: string;
   title: string;
+  content?: string;
+  items?: any;
   status: 'draft' | 'final';
 };
 
 export default function BuilderPage() {
-  const { selectedSector, addActivity, addToQueue, knowledgeBase } = useApp();
+  const { selectedSector, addActivity, addToQueue, knowledgeBase, user, supabase, trackEvent } = useApp();
   const { toast } = useToast();
   const [industry, setIndustry] = useState(selectedSector.label);
   const [style, setStyle] = useState(STYLES[0]);
@@ -82,7 +85,18 @@ export default function BuilderPage() {
             { id: '1', type: 'HERO', title: data.hero?.title || 'Neural Hero Header', status: 'draft' },
             { id: '2', type: 'SUBTEXT', title: data.hero?.sub || 'Strategic Mission', status: 'draft' },
             { id: '3', type: 'ABOUT', title: data.about?.title || 'Hikayemiz', content: data.about?.content, status: 'draft' },
-            { id: '4', type: 'SERVICES', title: 'Hizmetlerimiz', items: data.services, status: 'draft' },
+            { 
+                id: '4', 
+                type: 'SERVICES', 
+                title: 'Stratejik Çözüm Paketi', 
+                items: [
+                    ...(data.services || []),
+                    { name: "Neural Content Multiplier", desc: "İçeriklerinizi 12 farklı platform için otonom optimize eder." },
+                    { name: "Autonomous Lead Recovery", desc: "Kaybedilen müşteri adaylarını otonom senaryolarla geri kazanır." },
+                    { name: "Omni-Channel Planner", desc: "Tüm dijital varlığınızı tek bir beyin üzerinden yönetir." }
+                ], 
+                status: 'draft' 
+            },
             { id: '5', type: 'FAQ', title: 'Sıkça Sorulan Sorular', items: data.faqs, status: 'draft' },
             { id: '6', type: 'TESTIMONIALS', title: 'Müşteri Yorumları', items: data.testimonials, status: 'draft' },
             { id: '7', type: 'CONTACT', title: 'İletişim', items: data.contact, status: 'draft' },
@@ -95,6 +109,9 @@ export default function BuilderPage() {
         addActivity(`Full Corporate Architecture Generated: 8 Nodes`, 'builder');
         addToQueue('Website_Blueprint_v5.0_Deep');
         toast("Deep Architecture Complete: Fully personalized.", "success");
+        
+        // AUTO-SAVE NEW GENERATION
+        await saveToDatabase(generatedBlueprint, heroImage);
     } catch (error) {
         addLocalLog(`ERROR: Neural API Failed.`);
         setBuildState('idle');
@@ -136,10 +153,57 @@ export default function BuilderPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const updateComponentTitle = (id: string, newTitle: string) => {
-    setBlueprint(prev => prev.map(c => c.id === id ? { ...c, title: newTitle, status: 'final' } : c));
+  // LOAD PERSISTED ARCHITECTURE
+  useEffect(() => {
+    const loadLatest = async () => {
+        if (!user) return;
+        const { data, error } = await supabase
+            .from('site_blueprints')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (data && !error) {
+            setBlueprint(data.content);
+            setHeroImage(data.hero_image);
+            setIndustry(data.industry);
+            setStyle(data.style);
+            setBuildState('done');
+            addLocalLog("Neural Link Restored: Latest architecture loaded.");
+        }
+    };
+    loadLatest();
+  }, [user]);
+
+  const saveToDatabase = async (newBlueprint: Component[], img: string) => {
+    if (!user) return;
+    try {
+        await supabase.from('site_blueprints').insert([{
+            user_id: user.id,
+            industry,
+            style,
+            content: newBlueprint,
+            hero_image: img
+        }]);
+    } catch (e) {
+        console.error("Failed to save blueprint:", e);
+    }
+  };
+
+  const updateComponentTitle = async (id: string, newTitle: string) => {
+    const newBlueprint = blueprint.map(c => c.id === id ? { ...c, title: newTitle, status: 'final' } as Component : c);
+    setBlueprint(newBlueprint);
     addLocalLog(`Manual override: ${id} updated.`);
     addToQueue('Website_Blueprint_Update');
+    
+    // Auto-save edit
+    if (user) {
+        await supabase.from('site_blueprints').update({ content: newBlueprint })
+            .match({ user_id: user.id })
+            .order('created_at', { ascending: false })
+            .limit(1);
+    }
   };
 
   return (
@@ -434,7 +498,13 @@ export default function BuilderPage() {
                             {blueprint.find(c => c.type === 'SUBTEXT')?.title || 'Subtext generated based on strategy.'}
                         </p>
                         <div className="flex gap-6 relative z-10">
-                            <button className="px-10 py-5 bg-white text-black font-black uppercase text-xs tracking-widest rounded-full hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+                            <button 
+                                onClick={() => {
+                                    trackEvent('cta_click', { industry, style, text: blueprint.find(c => c.type === 'CTA')?.title });
+                                    toast("Conversion Event Logged", "success");
+                                }}
+                                className="px-10 py-5 bg-white text-black font-black uppercase text-xs tracking-widest rounded-full hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)]"
+                            >
                                 {blueprint.find(c => c.type === 'CTA')?.title || 'Get Started'}
                             </button>
                             <button className="px-10 py-5 bg-transparent border border-white/20 text-white font-black uppercase text-xs tracking-widest rounded-full hover:bg-white/5 transition-all">
@@ -465,19 +535,42 @@ export default function BuilderPage() {
                         )}
 
                         {/* SERVICES SECTION */}
-                        <div className="space-y-12">
-                            <div className="text-center space-y-4 mb-16">
-                                <h2 className="text-4xl font-syne font-black uppercase italic text-white">Uzmanlık Alanlarımız</h2>
-                                <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Geleceğin Teknolojisiyle Donatılmış Çözümler</p>
+                        <div className="space-y-16">
+                            <div className="text-center space-y-4 mb-20">
+                                <h2 className="text-4xl font-syne font-black uppercase italic text-white tracking-tighter">Stratejik Çözüm Paketi</h2>
+                                <p className="text-[10px] font-mono text-white/40 uppercase tracking-[0.5em] italic">Problem-Solution Alignment Matrix</p>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {(blueprint.find(c => c.type === 'SERVICES')?.items || []).map((service: any, i: number) => (
-                                    <div key={i} className="p-10 bg-white/[0.02] border border-white/5 rounded-[2.5rem] hover:border-[#00ffd1]/30 transition-all group">
-                                        <div className="w-14 h-14 bg-white/5 rounded-2xl mb-8 flex items-center justify-center group-hover:bg-[#00ffd1]/10 transition-colors">
-                                            <Zap size={24} className="text-white/40 group-hover:text-[#00ffd1] transition-colors" />
+                                    <div key={i} className="p-10 bg-white/[0.01] border border-white/5 rounded-[3rem] hover:border-[#00ffd1]/40 transition-all duration-700 group relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
+                                            <Sparkles size={40} className="text-[#00ffd1]" />
                                         </div>
-                                        <h3 className="text-xl font-black text-white mb-4 uppercase italic">{service.name}</h3>
-                                        <p className="text-sm text-white/40 leading-relaxed">{service.desc}</p>
+                                        
+                                        <div className="w-16 h-16 bg-white/5 rounded-[1.5rem] mb-10 flex items-center justify-center group-hover:bg-[#00ffd1] group-hover:text-black transition-all duration-500 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)]">
+                                            <Zap size={28} />
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <div>
+                                                <span className="text-[8px] font-mono text-[#00ffd1] uppercase tracking-[0.3em] font-black border border-[#00ffd1]/20 px-3 py-1 rounded-full bg-[#00ffd1]/5">Problem Solved</span>
+                                                <h3 className="text-2xl font-black text-white mt-4 uppercase italic tracking-tight group-hover:text-[#00ffd1] transition-colors">{service.name}</h3>
+                                            </div>
+                                            
+                                            <p className="text-sm text-white/40 leading-relaxed italic border-l border-white/10 pl-6">
+                                                "{service.desc}"
+                                            </p>
+
+                                            <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                                                <div className="space-y-1">
+                                                    <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest">Expected Impact</p>
+                                                    <p className="text-xs font-black text-white uppercase italic">High Performance</p>
+                                                </div>
+                                                <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#00ffd1]/40 transition-all">
+                                                    <ArrowUpRight size={14} className="text-white/20 group-hover:text-[#00ffd1]" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

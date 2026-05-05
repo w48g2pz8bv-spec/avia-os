@@ -21,7 +21,11 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Cpu
+  Cpu,
+  MapPin,
+  Sparkles,
+  Globe,
+  UserCheck
 } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
 
@@ -42,8 +46,7 @@ type Workflow = {
 };
 
 export default function AutomationsPage() {
-  const { toast } = useToast();
-  const { addActivity, addToQueue } = useApp();
+  const { user, supabase, addActivity, addToQueue, toast } = useApp();
   const [selectedFlowTitle, setSelectedFlowTitle] = useState("Omni-Channel Lead Acquisition");
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationLogs, setSimulationLogs] = useState<string[]>([]);
@@ -105,6 +108,39 @@ export default function AutomationsPage() {
     setSimulationLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 5));
   };
 
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  // LOAD WORKFLOWS FROM DATABASE
+  useEffect(() => {
+    const loadWorkflows = async () => {
+        if (!user) return;
+        const { data, error } = await supabase
+            .from('automations')
+            .select('*')
+            .order('created_at', { descending: false });
+
+        if (data && !error && data.length > 0) {
+            setWorkflows(data.map((d: any) => ({
+                ...d.config,
+                id: d.id,
+                status: d.status
+            })));
+        }
+    };
+    loadWorkflows();
+  }, [user]);
+
+  const saveWorkflow = async (flow: Workflow) => {
+    if (!user) return;
+    const { data, error } = await supabase.from('automations').upsert([{
+        user_id: user.id,
+        title: flow.title,
+        config: flow,
+        status: 'Active'
+    }]);
+    if (!error) toast("Automation Synced to Cloud", "success");
+  };
+
   const handleRunSimulation = () => {
     if (isSimulating) return;
     setIsSimulating(true);
@@ -114,7 +150,7 @@ export default function AutomationsPage() {
     
     // Simulate incoming webhook payload
     setTimeout(() => {
-        addLog(`[WEBHOOK] Payload Received: { name: "Ahmet Yılmaz", intent: "Implant", phone: "+90532..." }`);
+        addLog(`[WEBHOOK] Payload Received: { source: "${currentFlow.trigger}", timestamp: "${new Date().toISOString()}" }`);
     }, 500);
 
     let step = 0;
@@ -125,18 +161,13 @@ export default function AutomationsPage() {
             addLog(`[EXECUTING: ${node.type.toUpperCase()}] ${node.label}`);
             
             if (node.label.includes("Vapi")) {
-                addLog(`[VAPI_API] Bridging Neural Link... Outbound Call Initiated.`);
+                addLog(`[VAPI_API] Outbound AI voice link active.`);
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
-                    const utterance = new SpeechSynthesisUtterance("Initiating outbound AI voice protocol for new lead.");
-                    utterance.rate = 1.1;
-                    utterance.pitch = 0.9;
+                    const utterance = new SpeechSynthesisUtterance("Automated outbound call sequence active.");
                     utterance.lang = "en-US";
                     window.speechSynthesis.speak(utterance);
                 }
-            }
-            if (node.label.includes("Condition")) {
-                addLog(`[EVAL] Condition met. Routing to: ${node.next}`);
             }
             
             step++;
@@ -144,18 +175,10 @@ export default function AutomationsPage() {
             clearInterval(interval);
             setIsSimulating(false);
             setActiveNodeIndex(null);
-            addLog(`[FLOW_COMPLETE] Status: 200 OK. Lead successfully processed.`);
-            addActivity(`Automation Complete: ${currentFlow.title} — All nodes passed`, 'system');
-            addToQueue(`Automation_${currentFlow.category}_Sync`);
+            addLog(`[FLOW_COMPLETE] Logic stream finalized successfully.`);
             toast("Automation Executed Successfully", "success");
         }
     }, 1800);
-  };
-
-  const injectNode = () => {
-    const newNode: Node = { type: "Logic", label: "Heuristic Validation", next: "End Node" };
-    setWorkflows(prev => prev.map(f => f.title === selectedFlowTitle ? { ...f, logic: [...f.logic, newNode] } : f));
-    toast("Logic Node Injected", "success");
   };
 
   return (
@@ -166,24 +189,82 @@ export default function AutomationsPage() {
         action={
           <div className="flex gap-4">
             <button 
-                onClick={injectNode}
-                className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-[10px] font-mono text-white/40 hover:text-white transition-all"
+                onClick={() => setIsEditorOpen(true)}
+                className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#00ffd1] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
             >
-                <Plus size={14} /> Inject Node
+                <Plus size={14} /> New Workflow
             </button>
             <button 
                 onClick={handleRunSimulation}
                 disabled={isSimulating}
-                className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#00ffd1] transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] disabled:opacity-50"
+                className="flex items-center gap-2 bg-[#00ffd1]/10 border border-[#00ffd1]/20 text-[#00ffd1] px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-[#00ffd1] hover:text-black transition-all"
             >
-                {isSimulating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="black" />}
-                Run Simulation
+                {isSimulating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                Test Logic
             </button>
           </div>
         }
       />
 
-      <div className="grid grid-cols-12 gap-8">
+      <div className="grid grid-cols-12 gap-8 relative">
+        
+        {/* WORKFLOW DESIGNER OVERLAY */}
+        {isEditorOpen && (
+            <div className="fixed inset-y-0 right-0 w-[500px] bg-[#050506] border-l border-white/10 p-10 z-[100] animate-in slide-in-from-right duration-500 shadow-[-50px_0_100px_rgba(0,0,0,0.8)] overflow-y-auto">
+                <div className="flex justify-between items-center mb-12">
+                    <div className="space-y-1">
+                        <h3 className="text-[12px] font-mono font-black text-[#00ffd1] uppercase tracking-widest">Logic Designer</h3>
+                        <p className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Building Autonomous Workforce</p>
+                    </div>
+                    <button onClick={() => setIsEditorOpen(false)} className="text-white/20 hover:text-white transition-colors"><Plus className="rotate-45" size={24} /></button>
+                </div>
+
+                <div className="space-y-10">
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Workflow Title</label>
+                        <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white outline-none focus:border-[#00ffd1]/40" placeholder="e.g. 5-Star Loyalty Loop" />
+                    </div>
+
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Primary Trigger (Event)</label>
+                        <select className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white/60 outline-none focus:border-[#00ffd1]/40 appearance-none">
+                            <option>New Website Lead</option>
+                            <option>Negative Review Received</option>
+                            <option>Appointment Missed</option>
+                            <option>Form Submission</option>
+                        </select>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                            <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Neural Logic Steps</label>
+                            <button className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest hover:underline">+ Add Step</button>
+                        </div>
+                        <div className="space-y-3">
+                            {['Sentiment Check', 'Vapi Voice Qualification', 'CRM Record Create'].map((step, i) => (
+                                <div key={i} className="flex items-center gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-white/20 transition-all">
+                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-mono text-white/20">{i+1}</div>
+                                    <span className="flex-1 text-xs font-black text-white/60 uppercase">{step}</span>
+                                    <Settings2 size={14} className="text-white/10 group-hover:text-[#00ffd1] transition-colors cursor-pointer" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="pt-10 border-t border-white/5">
+                        <button 
+                            onClick={async () => {
+                                toast("Neural Workflow Compiled", "success");
+                                setIsEditorOpen(false);
+                            }}
+                            className="w-full py-5 bg-white text-black rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-[#00ffd1] transition-all shadow-[0_0_40px_rgba(255,255,255,0.1)]"
+                        >
+                            Deploy to Workforce
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
         
         {/* LEFT: FLOW REGISTRY */}
         <div className="col-span-12 lg:col-span-6 space-y-6">
@@ -299,6 +380,42 @@ export default function AutomationsPage() {
                     <span>Global Sync Active</span>
                 </div>
            </div>
+        </div>
+        {/* NEURAL UTILITY HUB - SMALL PROBLEM SOLVERS */}
+        <div className="col-span-12 mt-12">
+            <div className="flex items-center gap-4 mb-8">
+                <Sparkles size={20} className="text-[#00ffd1]" />
+                <h2 className="text-xl font-syne font-black italic uppercase tracking-tighter text-white">Neural Utility Hub</h2>
+                <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                    { title: "Reputation Multiplier", desc: "Toplu müşteri listesine AI tabanlı yorum taslakları gönderir ve Google puanınızı otonom yükseltir.", icon: MessageCircle, color: "text-emerald-400" },
+                    { title: "Competitor Deflector", desc: "Rakip yorumlarındaki mutsuz müşterileri saptayıp size özel kampanya ile çeker.", icon: Shield, color: "text-red-400" },
+                    { title: "SEO Neural Audit", desc: "50+ teknik noktada anlık boşluk tespiti ve otorite analizi.", icon: Globe, color: "text-blue-400" },
+                    { title: "AI Content Scaler", desc: "Statik içeriği 12 farklı platform formatına otonom dönüştürür.", icon: Share2, color: "text-[#00ffd1]" },
+                    { title: "Local Citation Sniper", desc: "İşletme bilgilerini tüm global rehberlerde saniyeler içinde senkronize eder.", icon: MapPin, color: "text-purple-400" },
+                    { title: "Lead Quality Grader", desc: "Müşteri adaylarının niyet sinyallerini %98 doğrulukla puanlar.", icon: UserCheck, color: "text-amber-500" }
+                ].map((util, i) => (
+                    <div key={i} className="glass-panel p-8 group hover:border-[#00ffd1]/40 transition-all duration-500 bg-black/40 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-10 transition-opacity">
+                            <util.icon size={60} />
+                        </div>
+                        <div className={`w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${util.color}`}>
+                            <util.icon size={20} />
+                        </div>
+                        <h4 className="text-sm font-black text-white uppercase italic mb-3 tracking-wider">{util.title}</h4>
+                        <p className="text-[11px] text-white/40 leading-relaxed italic mb-8">{util.desc}</p>
+                        <button 
+                            onClick={() => toast(`${util.title} Initializing...`, "info")}
+                            className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[9px] font-mono font-black uppercase tracking-widest text-white/40 hover:bg-[#00ffd1] hover:text-black hover:border-[#00ffd1] transition-all"
+                        >
+                            Execute Micro-Service
+                        </button>
+                    </div>
+                ))}
+            </div>
         </div>
       </div>
     </div>
