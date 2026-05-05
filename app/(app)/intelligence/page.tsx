@@ -36,15 +36,29 @@ export default function IntelligencePage() {
   const [isScanning, setIsScanning] = useState(false);
 
   const [competitors, setCompetitors] = useState<any[]>([]);
+  const [inferenceLogs, setInferenceLogs] = useState<string[]>([]);
+  const [knowledgeContext, setKnowledgeContext] = useState("");
   const [marketInsights, setMarketInsights] = useState<any>({
     dominanceLevel: "ANALYZING",
     growthPotential: "0%",
     summary: "Initiate probe to see market insights..."
   });
 
+  // Fetch Knowledge Base for Context
+  useEffect(() => {
+    const fetchKB = async () => {
+        const { data } = await supabase.from('documents').select('content').limit(5);
+        if (data) {
+            setKnowledgeContext(data.map(d => d.content).join("\n"));
+        }
+    };
+    fetchKB();
+  }, []);
+
   const handleDeepProbe = async () => {
     setIsScanning(true);
-    toast(`Initiating Competitive Probe for ${selectedSector.label}...`, "info");
+    setInferenceLogs(prev => [`[BRAIN] Accessing Knowledge Base...`, `[SYSTEM] Analyzing ${selectedSector.label} market with corporate memory...`, ...prev]);
+    toast(`Syncing Corporate Memory for Probe...`, "info");
     
     try {
         const res = await fetch('/api/intelligence/probe', {
@@ -52,7 +66,7 @@ export default function IntelligencePage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 sector: selectedSector.label,
-                context: "AIVA Neural OS Deployment"
+                context: knowledgeContext || "Generic Industry Data"
             })
         });
         const data = await res.json();
@@ -60,6 +74,11 @@ export default function IntelligencePage() {
         if (data.competitors) {
             setCompetitors(data.competitors);
             setMarketInsights(data.marketInsights);
+            setInferenceLogs(prev => [
+                `[INTEL] Found ${data.competitors.length} major competitors.`,
+                `[BRAIN] Strategy mapped: ${data.marketInsights.dominanceLevel} approach selected.`,
+                ...prev
+            ]);
             toast("Cross-Competitor Analysis Complete", "success");
             addActivity(`${selectedSector.label} sektörü için derin rakip analizi tamamlandı.`, 'agent');
         }
@@ -117,21 +136,6 @@ export default function IntelligencePage() {
                       </div>
                   </div>
 
-                  <div className="space-y-6">
-                      {competitors.map((comp, i) => (
-                          <div key={i} className="p-8 bg-white/[0.02] border border-white/5 rounded-[2.5rem] group hover:border-[#00ffd1]/20 transition-all relative overflow-hidden">
-                              <div className="flex justify-between items-start mb-6 relative z-10">
-                                  <div className="space-y-2">
-                                      <h4 className="text-xl font-black text-white italic uppercase tracking-tight">{comp.name}</h4>
-                                      <div className="flex gap-4">
-                                          <span className="text-[8px] font-mono text-white/20 uppercase tracking-widest">Strength: <span className="text-emerald-500">{comp.strength}</span></span>
-                                          <span className="text-[8px] font-mono text-white/20 uppercase tracking-widest">Weakness: <span className="text-red-500">{comp.weakness}</span></span>
-                                      </div>
-                                  </div>
-                                  <div className="text-right">
-                                      <div className="text-2xl font-black text-white/40 group-hover:text-white transition-colors italic">{comp.score}<span className="text-xs ml-1">/100</span></div>
-                                      <p className="text-[8px] font-mono text-white/10 uppercase tracking-widest">Trust Rating</p>
-                                  </div>
                               </div>
                               
                               <div className="p-6 bg-[#00ffd1]/5 border border-[#00ffd1]/10 rounded-2xl flex items-center justify-between relative z-10">
@@ -186,19 +190,16 @@ export default function IntelligencePage() {
                       <h4 className="text-[10px] font-mono font-black text-white/20 uppercase tracking-widest italic">Live Inference Stream</h4>
                   </div>
                   <div className="flex-1 space-y-4 font-mono text-[9px] text-white/30 overflow-y-auto scrollbar-hide">
-                      <div className="flex gap-4">
-                          <span className="text-[#00ffd1]">❯</span>
-                          <span>[INTEL] Competitor 'Global Health' updated pricing model...</span>
-                      </div>
-                      <div className="flex gap-4">
-                          <span className="text-indigo-400">❯</span>
-                          <span>[BRAIN] Adjusting Vapi value-anchoring protocol... [SUCCESS]</span>
-                      </div>
-                      <div className="flex gap-4">
-                          <span className="text-emerald-500">❯</span>
-                          <span>[SEO] Authority gap identified in 'Implant Aesthetics' niche.</span>
-                      </div>
-                      <div className="animate-pulse">❯ [LISTENING] Awaiting next market signal...</div>
+                      {inferenceLogs.length === 0 ? (
+                        <div className="animate-pulse">❯ [LISTENING] Awaiting market synchronization...</div>
+                      ) : (
+                        inferenceLogs.map((log, i) => (
+                            <div key={i} className="flex gap-4 animate-in slide-in-from-left duration-300">
+                                <span className={i === 0 ? "text-[#00ffd1]" : "text-white/20"}>❯</span>
+                                <span>{log}</span>
+                            </div>
+                        ))
+                      )}
                   </div>
               </div>
           </div>

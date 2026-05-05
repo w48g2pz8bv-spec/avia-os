@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useApp } from "../app-context";
 import PageHeader from "@/components/shared/page-header";
 import {
@@ -94,41 +94,50 @@ const SEASONAL_CAMPAIGNS = [
 
 export default function ReputationPage() {
   const { toast } = useToast();
-  const { addActivity } = useApp();
+  const { addActivity, supabase } = useApp();
 
   const [mainTab, setMainTab] = useState<MainTab>('overview');
 
-  // Overview
+  // Overview Stats
   const [sentimentScore] = useState(92.4);
   const [sentimentVelocity] = useState("ACCELERATING");
   const [crisisScore] = useState(18);
   const [isRecoveryActive] = useState(false);
 
-  // Inbox
+  // Inbox & State
   const [selectedTone, setSelectedTone] = useState("Empathetic");
   const [draftingId, setDraftingId] = useState<number | null>(null);
-  const [activeDrafts, setActiveDrafts] = useState<Record<number, string>>({});
-  const [respondedIds, setRespondedIds] = useState<Set<number>>(new Set());
+  const [activeDrafts, setActiveDrafts] = useState<Record<string, string>>({});
+  const [respondedIds, setRespondedIds] = useState<Set<string>>(new Set());
   const [platformFilter, setPlatformFilter] = useState('all');
 
-  // Campaign
+  // Database Data
+  const [realReviews, setRealReviews] = useState<any[]>([]);
+  const [realLeads, setRealLeads] = useState<any[]>([]);
+  const [knowledgeContext, setKnowledgeContext] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const { data: reviewsData } = await supabase.from('reviews').select('*').order('created_at', { ascending: false });
+        if (reviewsData) setRealReviews(reviewsData);
+
+        const { data: leadsData } = await supabase.from('competitor_leads').select('*').order('created_at', { ascending: false });
+        if (leadsData) setRealLeads(leadsData);
+
+        const { data: kbData } = await supabase.from('documents').select('content').limit(5);
+        if (kbData) setKnowledgeContext(kbData.map((d: any) => d.content).join("\n"));
+      } catch (err) {
+        console.error("Fetch Error:", err);
+      }
+    };
+    fetchData();
+  }, [supabase]);
+
+  // Handlers
   const [isCampaignActive, setIsCampaignActive] = useState(false);
   const [campaignProgress, setCampaignProgress] = useState(0);
 
-  // Win-Back
-  const [isScanning, setIsScanning] = useState(false);
-  const [winBackModal, setWinBackModal] = useState<typeof COMPETITOR_LEADS[0] | null>(null);
-
-  // Content Factory
-  const [selectedReviewId, setSelectedReviewId] = useState<number | null>(null);
-  const [contentType, setContentType] = useState<'instagram' | 'story' | 'linkedin' | 'schema'>('instagram');
-  const [generatingContent, setGeneratingContent] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState('');
-
-  // Campaigns
-  const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
-
-  // --- Handlers ---
   const handleStartCampaign = () => {
     setIsCampaignActive(true);
     setCampaignProgress(0);
@@ -142,32 +151,40 @@ export default function ReputationPage() {
     toast("Neural Competitor Displacement Active", "success");
   };
 
-  const handleScanLeads = () => {
+  const [isScanning, setIsScanning] = useState(false);
+  const [winBackModal, setWinBackModal] = useState<any | null>(null);
+
+  const handleScanLeads = async () => {
     setIsScanning(true);
     addActivity("Bölgesel rakip tarama başlatıldı.", "system");
     toast("Şikayetvar + Google Maps taranıyor...", "info");
-    setTimeout(() => { setIsScanning(false); toast("3 yeni lead tespit edildi", "success"); }, 3000);
+    setTimeout(async () => {
+      const { data } = await supabase.from('competitor_leads').select('*').order('created_at', { ascending: false });
+      if (data) setRealLeads(data);
+      setIsScanning(false);
+      toast("3 yeni lead tespit edildi", "success");
+    }, 3000);
   };
 
-  const generateDraft = async (reviewId: number) => {
-    setDraftingId(reviewId);
-    const review = INBOX_REVIEWS.find(r => r.id === reviewId);
-    if (!review) { setDraftingId(null); return; }
+  const generateDraft = async (reviewId: string) => {
+    setDraftingId(parseInt(reviewId as any) || 999);
+    const review = realReviews.find(r => r.id === reviewId);
+    if (!review) return;
     try {
-      const res = await fetch('/api/vapi/chat', {
+      const res = await fetch('/api/reputation/generate-reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Sen bir ${selectedTone.toLowerCase()} tonunda profesyonel bir müşteri hizmetleri uzmanısın. Aşağıdaki ${review.sentiment === 'NEGATIVE' ? 'olumsuz' : 'olumlu'} yoruma psikolojik "kabul et - yeniden çerçevele - değere pivot et" framework ile Türkçe yanıt yaz. SEO anahtar kelimeleri doğal yerleştir: ${review.injectedKeywords.join(', ')}. Yorum: "${review.comment}"`,
-          context: [],
-          agentName: 'Review Optimizer'
+          reviewContent: review.content,
+          authorName: review.author_name,
+          rating: review.rating,
+          context: knowledgeContext
         })
       });
       const data = await res.json();
-      const draft = data.response || "Değerli yorumunuz için teşekkür ederiz. Deneyiminizi iyileştirmek adına çalışmalarımız devam etmektedir.";
-      setActiveDrafts(prev => ({ ...prev, [reviewId]: draft }));
-      addActivity(`Yapay zeka yanıtı üretildi: Yorum #${reviewId}`, 'agent');
-      toast("Yanıt hazırlandı", "success");
+      setActiveDrafts(prev => ({ ...prev, [reviewId]: data.reply }));
+      addActivity(`Yapay zeka yanıtı üretildi: ${review.author_name}`, 'agent');
+      toast("Neural Reply Generated", "success");
     } catch {
       toast("Yanıt üretilemedi", "error");
     } finally {
@@ -175,24 +192,28 @@ export default function ReputationPage() {
     }
   };
 
-  const markResponded = (id: number) => {
-    setRespondedIds(prev => new Set([...prev, id]));
-    toast("Yanıt gönderildi olarak işaretlendi", "success");
-    addActivity(`Yorum #${id} yanıtlandı`, 'agent');
+  const markResponded = (id: string) => {
+    setRespondedIds(prev => new Set([...Array.from(prev), id]));
+    toast("Yanıt gönderildi", "success");
+    addActivity(`Yorum yanıtlandı`, 'agent');
   };
+
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [contentType, setContentType] = useState<'instagram' | 'story' | 'linkedin' | 'schema'>('instagram');
+  const [generatingContent, setGeneratingContent] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState('');
 
   const generateContent = async () => {
     if (!selectedReviewId) return;
     setGeneratingContent(true);
-    const review = INBOX_REVIEWS.find(r => r.id === selectedReviewId);
-    if (!review) { setGeneratingContent(false); return; }
-    const typeMap = { instagram: 'Instagram gönderisi', story: 'Instagram story metni', linkedin: 'LinkedIn paylaşımı', schema: 'Google Schema Review JSON-LD kodu' };
+    const review = realReviews.find(r => r.id === selectedReviewId);
+    if (!review) return;
     try {
       const res = await fetch('/api/vapi/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: `Bu müşteri yorumundan bir ${typeMap[contentType]} oluştur. Yorum: "${review.comment}". Kullanıcı: ${review.user}. Platform: ${review.source}. ${contentType === 'schema' ? 'JSON-LD formatında yaz.' : 'Emoji kullan, hashtaglar ekle, call-to-action ile bitir.'}`,
+          message: `Bu yorumdan ${contentType} oluştur: ${review.content}`,
           context: [],
           agentName: 'Content Factory'
         })
@@ -201,40 +222,30 @@ export default function ReputationPage() {
       setGeneratedContent(data.response || '');
       toast("İçerik üretildi", "success");
     } catch {
-      toast("İçerik üretilemedi", "error");
+      toast("Hata", "error");
     } finally {
       setGeneratingContent(false);
     }
   };
 
+  const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
   const launchCampaign = (id: string) => {
     setActiveCampaignId(id);
-    addActivity(`Kampanya başlatıldı: ${SEASONAL_CAMPAIGNS.find(c => c.id === id)?.name}`, 'system');
     toast("Kampanya aktifleştirildi", "success");
     setTimeout(() => setActiveCampaignId(null), 4000);
   };
-
-  const filteredReviews = platformFilter === 'all' ? INBOX_REVIEWS : INBOX_REVIEWS.filter(r => r.platform === platformFilter);
-
-  const TABS: { id: MainTab; label: string; icon: any }[] = [
-    { id: 'overview', label: 'Genel Bakış', icon: BarChart3 },
-    { id: 'inbox', label: 'Yorum Kutusu', icon: MessageSquare },
-    { id: 'winback', label: 'Rakip Kanalı', icon: Target },
-    { id: 'content', label: 'İçerik Fabrikası', icon: Sparkles },
-    { id: 'campaigns', label: 'Kampanyalar', icon: Calendar },
-  ];
 
   return (
     <div className="max-w-[1600px] animate-in fade-in duration-1000">
       <PageHeader
         title="Reputation Command Center"
-        statusText={`Sentiment: ${sentimentScore}% ${sentimentVelocity} // Kriz Skoru: ${crisisScore}/100 // ${PLATFORMS.length} Platform`}
+        statusText={`Sentiment: ${sentimentScore}% // Kriz Skoru: ${crisisScore}/100`}
         action={
           <div className="flex items-center gap-4">
             <button
               onClick={handleStartCampaign}
               disabled={isCampaignActive}
-              className="flex items-center gap-2 bg-white text-black px-8 py-3 rounded-xl text-[10px] font-mono font-black uppercase tracking-widest hover:bg-[#00ffd1] transition-all shadow-[0_0_40px_rgba(0,255,209,0.2)] disabled:opacity-50"
+              className="flex items-center gap-2 bg-white text-black px-8 py-3 rounded-xl text-[10px] font-mono font-black uppercase tracking-widest hover:bg-[#00ffd1] transition-all disabled:opacity-50"
             >
               {isCampaignActive ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} fill="black" />}
               {isCampaignActive ? `Scaling ${campaignProgress}%` : 'Reputation Multiplier'}
@@ -243,18 +254,28 @@ export default function ReputationPage() {
         }
       />
 
-      {/* TAB NAVİGASYON */}
-      <div className="flex border-b border-white/5 mb-8 overflow-x-auto scrollbar-hide">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setMainTab(tab.id)}
-            className={`flex items-center gap-2 px-8 py-5 text-[10px] font-mono font-black uppercase tracking-widest whitespace-nowrap transition-all border-r border-white/5 ${mainTab === tab.id ? 'bg-white/5 text-[#00ffd1] shadow-[inset_0_-2px_0_#00ffd1]' : 'text-white/20 hover:text-white'}`}
-          >
-            <tab.icon size={13} />
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-12">
+        <div className="flex items-center bg-white/5 p-1.5 rounded-[2rem] border border-white/10 shadow-2xl backdrop-blur-xl">
+          {[
+            { id: 'overview', label: 'Genel Bakış', icon: BarChart3 },
+            { id: 'inbox', label: 'Yorum Kutusu', icon: MessageSquare },
+            { id: 'winback', label: 'Rakip Kanalı', icon: Target },
+            { id: 'content', label: 'İçerik Fabrikası', icon: Sparkles },
+            { id: 'campaigns', label: 'Kampanyalar', icon: Calendar },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setMainTab(tab.id as MainTab)}
+              className={`flex items-center gap-3 px-8 py-4 rounded-[1.5rem] text-[10px] font-mono font-black uppercase tracking-widest transition-all duration-500 ${mainTab === tab.id
+                  ? 'bg-[#00ffd1] text-black shadow-[0_0_50px_rgba(0,255,209,0.3)] scale-105'
+                  : 'text-white/20 hover:text-white/60 hover:bg-white/5'
+                }`}
+            >
+              <tab.icon size={14} className={mainTab === tab.id ? 'animate-pulse' : ''} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -432,26 +453,27 @@ export default function ReputationPage() {
             </div>
 
             <div className="space-y-4">
-              {filteredReviews.map(item => (
+              {realReviews.filter(item => platformFilter === 'all' || item.platform.toLowerCase().includes(platformFilter)).map(item => (
                 <motion.div key={item.id} layout
-                  className={`glass-panel p-8 space-y-6 group transition-all duration-500 hover:border-white/20 ${item.sentiment === 'NEGATIVE' ? 'border-red-500/20' : ''} ${respondedIds.has(item.id) ? 'opacity-50' : ''}`}>
+                  className={`glass-panel p-8 space-y-6 group transition-all duration-500 hover:border-white/20 ${item.sentiment === 'Negative' ? 'border-red-500/20' : ''} ${respondedIds.has(item.id) ? 'opacity-50' : ''}`}>
+
                   <div className="flex justify-between items-start">
                     <div className="flex gap-5 items-start">
-                      <div className="w-14 h-14 rounded-[1.5rem] bg-gradient-to-br from-white/10 to-transparent flex items-center justify-center border border-white/5 text-lg font-black italic text-white/40 relative">
-                        {item.user[0]}
+                      <div className="w-14 h-14 rounded-[1.5rem] bg-gradient-to-br from-white/10 to-transparent flex items-center justify-center border border-white/5 text-lg font-black italic text-white/40 relative uppercase">
+                        {item.author_name[0]}
                         <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-black border border-white/10 rounded-full flex items-center justify-center text-[7px]">
-                          {item.source[0]}
+                          {item.platform[0]}
                         </div>
                       </div>
                       <div>
                         <h4 className="font-black text-white flex items-center gap-3 flex-wrap">
-                          {item.user}
-                          <span className={`text-[7px] px-2 py-0.5 rounded-full font-mono font-black ${item.sentiment === 'POSITIVE' ? 'bg-[#00ffd1]/10 text-[#00ffd1]' : 'bg-red-500/10 text-red-400 animate-pulse'}`}>
+                          {item.author_name}
+                          <span className={`text-[7px] px-2 py-0.5 rounded-full font-mono font-black ${item.sentiment === 'Positive' ? 'bg-[#00ffd1]/10 text-[#00ffd1]' : 'bg-red-500/10 text-red-400 animate-pulse'}`}>
                             {item.sentiment}
                           </span>
-                          {respondedIds.has(item.id) && <span className="text-[7px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono">YANITLANDI</span>}
+                          {respondedIds.has(item.id) && <span className="text-[7px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono uppercase">Yanıtlandı</span>}
                         </h4>
-                        <p className="text-[9px] font-mono text-white/20 mt-1">{item.source} • {item.time}</p>
+                        <p className="text-[9px] font-mono text-white/20 mt-1">{item.platform} • saniyeler önce</p>
                       </div>
                     </div>
                     <div className="flex gap-0.5">
@@ -461,23 +483,16 @@ export default function ReputationPage() {
                     </div>
                   </div>
 
-                  <p className="text-sm text-white/60 leading-relaxed italic border-l-2 border-white/10 pl-4">"{item.comment}"</p>
+                  <p className="text-sm text-white/60 leading-relaxed italic border-l-2 border-white/10 pl-4">"{item.content}"</p>
 
-                  {/* Psikolojik Framework */}
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: 'Kabul Et', content: item.frameworks.ack, icon: CheckCircle2, color: 'emerald' },
-                      { label: 'Yeniden Çerçevele', content: item.frameworks.reframe, icon: RefreshCcw, color: 'indigo' },
-                      { label: 'Değere Yönelt', content: item.frameworks.pivot, icon: Zap, color: 'amber' },
-                    ].map((f, idx) => (
-                      <div key={idx} className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-white/10 transition-all">
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/5 hover:border-white/10 transition-all">
                         <div className="flex items-center gap-2 mb-2">
-                          <f.icon size={11} className={`text-${f.color}-400`} />
-                          <span className="text-[7px] font-mono text-white/20 uppercase tracking-widest font-black">{f.label}</span>
+                          <Brain size={11} className="text-[#00ffd1]" />
+                          <span className="text-[7px] font-mono text-white/20 uppercase tracking-widest font-black">Neural Strategy Injected</span>
                         </div>
-                        <p className="text-[9px] text-white/40 leading-relaxed line-clamp-3">"{f.content}"</p>
+                        <p className="text-[9px] text-white/40 leading-relaxed line-clamp-3">AIVA is matching this review with your {item.sentiment} engagement protocols.</p>
                       </div>
-                    ))}
                   </div>
 
                   {/* Yanıt Alanı */}
@@ -500,9 +515,8 @@ export default function ReputationPage() {
 
                   <div className="flex items-center justify-between pt-2 border-t border-white/5">
                     <div className="flex flex-wrap gap-1">
-                      {item.injectedKeywords.map((kw, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-black border border-white/10 rounded text-[7px] font-mono text-[#00ffd1] uppercase">{kw}</span>
-                      ))}
+                      <span className="px-2 py-0.5 bg-black border border-white/10 rounded text-[7px] font-mono text-[#00ffd1] uppercase">Real-Time Insight</span>
+                      <span className={`px-2 py-0.5 bg-black border border-white/10 rounded text-[7px] font-mono uppercase ${item.sentiment === 'Positive' ? 'text-emerald-500' : 'text-red-500'}`}>{item.sentiment} Matrix</span>
                     </div>
                     <div className="flex items-center gap-3">
                       {item.sentiment === 'NEGATIVE' && (
@@ -591,15 +605,22 @@ export default function ReputationPage() {
               <div className="col-span-12 lg:col-span-8">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-black italic uppercase tracking-tighter text-white">Tespit Edilen Leadler</h2>
-                  <span className="text-[9px] font-mono text-white/20">{COMPETITOR_LEADS.length} aktif lead</span>
+                  <span className="text-[9px] font-mono text-white/20">{realLeads.length} aktif lead</span>
                 </div>
                 <div className="space-y-4">
-                  {COMPETITOR_LEADS.map((lead, i) => (
-                    <div key={i} className="glass-panel p-8 hover:border-white/20 transition-all group">
+                  {realLeads.length === 0 ? (
+                    <div className="p-12 text-center border border-white/5 bg-white/[0.02] rounded-3xl mt-4">
+                      <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.4em]">Veritabanında Lead Kaydı Bulunamadı</p>
+                      <p className="text-[8px] text-white/10 mt-2 font-mono">Lütfen SQL Editor üzerinden verilerin eklendiğinden emin olun.</p>
+                    </div>
+                  ) : (
+                    realLeads.map((lead, i) => (
+                      <div key={i} className="glass-panel p-8 hover:border-white/20 transition-all group">
+
                       <div className="flex items-start justify-between mb-5">
                         <div className="flex items-center gap-4">
-                          <div className={`px-3 py-1 rounded-full text-[7px] font-mono font-black uppercase ${lead.signal === 'HIGH' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                            {lead.signal} SINYAL
+                          <div className={`px-3 py-1 rounded-full text-[7px] font-mono font-black uppercase ${lead.signal_level === 'HIGH' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                            {lead.signal_level} SINYAL
                           </div>
                           <div className="px-3 py-1 bg-white/5 rounded-full text-[7px] font-mono text-white/40 uppercase">{lead.platform}</div>
                           <span className="text-[8px] text-white/20">{lead.distance}</span>
@@ -811,6 +832,6 @@ export default function ReputationPage() {
         )}
 
       </AnimatePresence>
-    </div>
+    </div >
   );
 }
