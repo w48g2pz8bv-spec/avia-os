@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Vapi from "@vapi-ai/web";
 import { useApp } from "../app-context";
 import PageHeader from "@/components/shared/page-header";
 import {
@@ -154,12 +155,28 @@ export default function VapiPage() {
   const [mainTab, setMainTab] = useState<MainTab>('agents');
   const [selectedAgentId, setSelectedAgentId] = useState('appt');
 
+  // Real Database Data
+  const [realCallHistory, setRealCallHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (mainTab === 'analytics') {
+      const fetchCalls = async () => {
+        if (!supabase) return;
+        const { data, error } = await supabase.from('vapi_calls').select('*').order('created_at', { ascending: false }).limit(20);
+        if (data && !error) setRealCallHistory(data);
+      };
+      fetchCalls();
+    }
+  }, [mainTab, supabase]);
+
   // Console
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [callStatus, setCallStatus] = useState<'inactive' | 'loading' | 'active'>('inactive');
   const [neuralLogs, setNeuralLogs] = useState<string[]>([]);
   const [whisperLogs, setWhisperLogs] = useState<string[]>([]);
+  const vapiRef = useRef<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Campaign
@@ -182,78 +199,77 @@ export default function VapiPage() {
   const addNeuralLog = (msg: string) =>
     setNeuralLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 6));
 
+  useEffect(() => {
+    // Initialize Vapi only once
+    if (!vapiRef.current) {
+      vapiRef.current = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || "");
+      
+      vapiRef.current.on('call-start', () => {
+        setCallStatus('active');
+        addNeuralLog("Vapi araması başladı");
+      });
+
+      vapiRef.current.on('call-end', () => {
+        setCallStatus('inactive');
+        addNeuralLog("Vapi araması sonlandı");
+      });
+
+      vapiRef.current.on('message', (message: any) => {
+        if (message.type === 'transcript' && message.transcriptType === 'final') {
+           setMessages(prev => [...prev, {
+             role: message.role === 'user' ? 'user' : 'assistant',
+             content: message.transcript,
+             timestamp: new Date().toLocaleTimeString()
+           }]);
+        }
+      });
+
+      vapiRef.current.on('error', (e: any) => {
+        console.error("Vapi Error:", e);
+        setCallStatus('inactive');
+        addNeuralLog("HATA: Vapi bağlantı sorunu");
+      });
+    }
+
+    return () => {
+      // Cleanup
+      if (vapiRef.current && callStatus === 'active') {
+        vapiRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleCall = () => {
+    if (callStatus === 'active') {
+      setCallStatus('loading');
+      vapiRef.current.stop();
+    } else {
+      setCallStatus('loading');
+      setMessages([]);
+      addNeuralLog("Agent'a bağlanılıyor...");
+      
+      // Start call with overrides using currentAgent
+      vapiRef.current.start({
+        model: {
+          provider: "openai",
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: currentAgent.prompt
+            }
+          ]
+        },
+        voice: {
+          provider: "11labs",
+          voiceId: "cjVigY5qzO86Hznl2qN5" // Ex: Jessica voice placeholder
+        }
+      });
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || isProcessing) return;
-    const userMsg = chatInput;
-    setChatInput("");
-    setMessages(prev => [...prev, { role: 'user', content: userMsg, timestamp: new Date().toLocaleTimeString() }]);
-    setIsProcessing(true);
-
-    const lower = userMsg.toLowerCase();
-    if (lower.includes('pahalı') || lower.includes('fiyat') || lower.includes('ücret')) {
-      setWhisperLogs(prev => [`[STRATEJI] Fiyat objeksiyonu → "Değer Çapalama" protokolü aktif`, ...prev].slice(0, 8));
-    } else if (lower.includes('güven') || lower.includes('emin') || lower.includes('referans')) {
-      setWhisperLogs(prev => [`[STRATEJI] Güven objeksiyonu → "Otorite Enjeksiyonu" aktif`, ...prev].slice(0, 8));
-    } else {
-      setWhisperLogs(prev => [`[ANALİZ] Niyet taranıyor... Duygusal yansıma: %88`, ...prev].slice(0, 8));
-    }
-
-    addNeuralLog("Nöral Beyin sorgulanıyor...");
-
-    try {
-      const res = await fetch('/api/vapi/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMsg,
-          context: knowledgeBase,
-          agentName: currentAgent.name,
-          agentPrompt: currentAgent.prompt,
-          defenseProtocols: currentAgent.defenses,
-          sector: currentAgent.sector,
-        })
-      });
-      const data = await res.json();
-      const response = data.response || "Nöral bağlantı kesildi. Yeniden kurulıyor...";
-
-      addNeuralLog("Yanıt üretildi — dönüşüm analizi yapılıyor");
-      setMessages(prev => [...prev, { role: 'assistant', content: response, timestamp: new Date().toLocaleTimeString() }]);
-      setIsProcessing(false);
-
-      const lowerResp = response.toLowerCase();
-      const conversionDetected = currentAgent.keywords.some(k => lowerResp.includes(k)) &&
-        (lowerResp.includes('randevu') || lowerResp.includes('evet') || lowerResp.includes('tamam'));
-
-      if (conversionDetected) {
-        setWhisperLogs(prev => [`[BAŞARI] Soft-close tespit edildi. CRM'e senkronize ediliyor...`, ...prev].slice(0, 8));
-        addActivity(`Ses Dönüşümü: ${currentAgent.name} — Lead kalifikasyonu başarılı`, 'sync');
-        trackEvent('voice_conversion', { agent: currentAgent.id });
-
-        if (user) {
-          await supabase.from('leads').insert({
-            user_id: user.id,
-            name: `Ses Prospekti [${new Date().toLocaleTimeString()}]`,
-            source: 'AI Ses Asistanı',
-            intent: 'Randevu İstedi',
-            score: 96,
-            status: 'Qualified'
-          });
-          toast("Lead CRM'e eklendi", "success");
-        }
-      }
-
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utt = new SpeechSynthesisUtterance(response);
-        utt.lang = "tr-TR"; utt.rate = 1.0;
-        window.speechSynthesis.speak(utt);
-      }
-    } catch {
-      addNeuralLog("HATA: Nöral bağlantı kesildi");
-      setIsProcessing(false);
-      toast("Bağlantı Hatası", "error");
-    }
   };
 
   const TABS: { id: MainTab; label: string; icon: any }[] = [
@@ -340,7 +356,7 @@ export default function VapiPage() {
                       {[
                         { label: 'Başarı', value: `%${agent.stats.success}` },
                         { label: 'Dönüşüm', value: `%${agent.stats.convRate}` },
-                        { label: 'Çağrı', value: agent.stats.calls.toLocaleString() },
+                        { label: 'Çağrı', value: agent.stats.calls.toLocaleString('en-US') },
                       ].map((s, i) => (
                         <div key={i} className="text-center">
                           <p className="text-[7px] font-mono text-white/20 uppercase">{s.label}</p>
@@ -599,26 +615,33 @@ export default function VapiPage() {
                     </div>
                   )}
 
-                  {/* Input */}
-                  <form onSubmit={handleSendMessage} className="p-6 border-t border-white/5 bg-black/60">
-                    <div className="relative">
-                      <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                        placeholder="Prospekt olarak yaz... (Türkçe veya İngilizce)"
-                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-5 pl-6 pr-16 text-sm text-white focus:border-[#00ffd1]/40 outline-none transition-all" />
-                      <button type="submit" disabled={!chatInput.trim() || isProcessing}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-[#00ffd1] text-black rounded-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-20">
-                        <Send size={16} />
-                      </button>
-                    </div>
-                    <div className="flex gap-2 mt-3 flex-wrap">
-                      {["Fiyat nedir?", "Randevu almak istiyorum", "Başka kliniğe baktım", "Güvenilir misiniz?"].map(q => (
-                        <button key={q} type="button" onClick={() => setChatInput(q)}
-                          className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-full text-[8px] font-mono text-white/20 hover:text-white hover:border-white/20 transition-all uppercase">
-                          {q}
-                        </button>
-                      ))}
-                    </div>
-                  </form>
+                  {/* Input / Voice Control */}
+                  <div className="p-6 border-t border-white/5 bg-black/60 flex flex-col items-center justify-center space-y-4">
+                    <button 
+                      onClick={toggleCall}
+                      disabled={callStatus === 'loading'}
+                      className={`flex items-center gap-3 px-8 py-4 rounded-full font-black uppercase tracking-widest transition-all ${
+                        callStatus === 'active' 
+                          ? 'bg-red-500 text-white hover:bg-red-600 shadow-[0_0_30px_rgba(239,68,68,0.3)]' 
+                          : callStatus === 'loading'
+                          ? 'bg-white/10 text-white/50 cursor-not-allowed'
+                          : 'bg-[#00ffd1] text-black hover:bg-[#00ffd1]/80 shadow-[0_0_30px_rgba(0,255,209,0.2)] hover:scale-105'
+                      }`}
+                    >
+                      {callStatus === 'loading' ? (
+                        <><Loader2 size={18} className="animate-spin" /> Bağlanıyor...</>
+                      ) : callStatus === 'active' ? (
+                        <><Phone size={18} className="animate-pulse" /> Aramayı Sonlandır</>
+                      ) : (
+                        <><Mic size={18} /> Canlı Sesli Görüşme Başlat</>
+                      )}
+                    </button>
+                    {callStatus === 'active' && (
+                      <p className="text-[10px] font-mono text-[#00ffd1] uppercase tracking-widest animate-pulse">
+                        Mikrofon Aktif — Agent Sizi Dinliyor
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -912,50 +935,54 @@ export default function VapiPage() {
               <div className="col-span-12 lg:col-span-8">
                 <h2 className="text-[10px] font-mono font-black text-white/20 tracking-[0.3em] uppercase italic mb-4">Son Çağrılar</h2>
                 <div className="space-y-3">
-                  {CALL_HISTORY.map(call => (
-                    <div key={call.id} className="glass-panel p-6 hover:border-white/10 transition-all">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-2.5 rounded-xl ${call.outcome === 'CONVERTED' ? 'bg-[#00ffd1]/10' : call.outcome === 'FOLLOW_UP' ? 'bg-indigo-500/10' : 'bg-red-500/10'}`}>
-                            {call.outcome === 'CONVERTED' ? <CheckCircle2 size={14} className="text-[#00ffd1]" /> : call.outcome === 'FOLLOW_UP' ? <Clock size={14} className="text-indigo-400" /> : <PhoneMissed size={14} className="text-red-400" />}
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-white">{call.prospect}</p>
-                            <p className="text-[8px] font-mono text-white/20 uppercase">{call.agent} · {call.time} · {call.duration}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {call.outcome !== 'NO_ANSWER' && (
-                            <div className="flex items-center gap-2">
-                              <div className="h-1.5 w-20 bg-white/5 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${call.sentiment}%`, backgroundColor: call.sentiment > 80 ? '#00ffd1' : call.sentiment > 60 ? '#F59E0B' : '#EF4444' }} />
-                              </div>
-                              <span className="text-[8px] font-mono text-white/20">{call.sentiment}</span>
-                            </div>
-                          )}
-                          <span className={`text-[7px] px-2 py-0.5 rounded-full font-mono font-black uppercase border ${call.outcome === 'CONVERTED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : call.outcome === 'FOLLOW_UP' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                            {call.outcome === 'CONVERTED' ? 'DÖNÜŞTÜ' : call.outcome === 'FOLLOW_UP' ? 'TAKİP' : 'CEVAPSIZ'}
-                          </span>
-                        </div>
-                      </div>
-                      {call.objections.length > 0 && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[7px] font-mono text-white/10 uppercase">İtirazlar:</span>
-                          {call.objections.map((o, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-red-500/5 border border-red-500/10 rounded text-[7px] font-mono text-red-400 uppercase">{o}</span>
-                          ))}
-                        </div>
-                      )}
-                      {call.postActions.length > 0 && (
-                        <div className="flex items-center gap-2 flex-wrap mt-2">
-                          <span className="text-[7px] font-mono text-white/10 uppercase">Sonraki:</span>
-                          {call.postActions.map((a, i) => (
-                            <span key={i} className="px-2 py-0.5 bg-[#00ffd1]/5 border border-[#00ffd1]/10 rounded text-[7px] font-mono text-[#00ffd1] uppercase">{a}</span>
-                          ))}
-                        </div>
-                      )}
+                  {realCallHistory.length === 0 ? (
+                    <div className="p-8 text-center text-white/30 font-mono text-[10px] uppercase tracking-widest border border-white/5 rounded-2xl bg-black/40">
+                      Henüz gerçek çağrı verisi yok.
                     </div>
-                  ))}
+                  ) : realCallHistory.map(call => {
+                    const durationSec = call.duration || 0;
+                    const durString = `${Math.floor(durationSec / 60)}m ${durationSec % 60}s`;
+                    const timeStr = new Date(call.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                    const outcome = call.status === 'completed' ? 'CONVERTED' : call.status === 'failed' ? 'NO_ANSWER' : 'FOLLOW_UP';
+                    const prospect = call.prospect_name || "Web Arayan";
+                    const agent = "Vapi Agent";
+                    const sentiment = call.success_eval ? 95 : 50; // Geçici hesaplama
+                    const objections = []; // Gelecekte AI analizinden gelecek
+
+                    return (
+                      <div key={call.id} className="glass-panel p-6 hover:border-white/10 transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-4">
+                            <div className={`p-2.5 rounded-xl ${outcome === 'CONVERTED' ? 'bg-[#00ffd1]/10' : outcome === 'FOLLOW_UP' ? 'bg-indigo-500/10' : 'bg-red-500/10'}`}>
+                              {outcome === 'CONVERTED' ? <CheckCircle2 size={14} className="text-[#00ffd1]" /> : outcome === 'FOLLOW_UP' ? <Clock size={14} className="text-indigo-400" /> : <PhoneMissed size={14} className="text-red-400" />}
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-white">{prospect}</p>
+                              <p className="text-[8px] font-mono text-white/20 uppercase">{agent} · {timeStr} · {durString}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {outcome !== 'NO_ANSWER' && (
+                              <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-20 bg-white/5 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full" style={{ width: `${sentiment}%`, backgroundColor: sentiment > 80 ? '#00ffd1' : sentiment > 60 ? '#F59E0B' : '#EF4444' }} />
+                                </div>
+                                <span className="text-[8px] font-mono text-white/20">{sentiment}</span>
+                              </div>
+                            )}
+                            <span className={`text-[7px] px-2 py-0.5 rounded-full font-mono font-black uppercase border ${outcome === 'CONVERTED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : outcome === 'FOLLOW_UP' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                              {outcome === 'CONVERTED' ? 'TAMAMLANDI' : outcome === 'FOLLOW_UP' ? 'DEVAM EDİYOR' : 'BAŞARISIZ'}
+                            </span>
+                          </div>
+                        </div>
+                        {call.summary && (
+                          <div className="mt-4 p-3 bg-white/5 border border-white/5 rounded-xl text-[10px] text-white/50 italic leading-relaxed">
+                            {call.summary}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useApp, SECTORS } from "../app-context";
 import PageHeader from "@/components/shared/page-header";
@@ -28,10 +29,19 @@ import { useToast } from "@/lib/toast-context";
 
 export default function KnowledgePage() {
   const { toast } = useToast();
-  const { knowledgeBase, addKnowledge, deleteKnowledge, selectedSector, isDbConnected } = useApp();
+  const { addActivity, selectedSector, isDbConnected } = useApp();
   
+  const [realDocuments, setRealDocuments] = useState<any[]>([]);
   const [filterSector, setFilterSector] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    const fetchDocs = async () => {
+      const { data } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+      if (data) setRealDocuments(data);
+    };
+    fetchDocs();
+  }, []);
   
   // Inject Form States
   const [newKnowledge, setNewKnowledge] = useState("");
@@ -45,17 +55,21 @@ export default function KnowledgePage() {
   const [isAdding, setIsAdding] = useState(false);
   const [processingStage, setProcessingStage] = useState(0);
 
+  // Oracle Query States
+  const [oracleQuery, setOracleQuery] = useState("");
+  const [oracleResponse, setOracleResponse] = useState<any>(null);
+  const [isOracleThinking, setIsOracleThinking] = useState(false);
+
   const allSectors = ["All", ...SECTORS.map(s => s.label)];
 
   const filteredKnowledge = useMemo(() => {
-    return knowledgeBase.filter(entry => {
-      const matchesSector = filterSector === "All" || entry.sector === filterSector;
+    return realDocuments.filter(entry => {
+      const matchesSector = filterSector === "All" || entry.title.includes(filterSector);
       const matchesSearch = !searchQuery || 
-        entry.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        entry.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+        entry.title.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesSector && matchesSearch;
     });
-  }, [knowledgeBase, filterSector, searchQuery]);
+  }, [realDocuments, filterSector, searchQuery]);
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -76,55 +90,93 @@ export default function KnowledgePage() {
     setIsAdding(true);
     setProcessingStage(1);
 
-    // Simulate Neural Processing Stages for "Teach Mode" feel
-    await new Promise(r => setTimeout(r, 600));
-    setProcessingStage(2);
-    
-    await new Promise(r => setTimeout(r, 600));
-    setProcessingStage(3);
-    
-    await new Promise(r => setTimeout(r, 400));
-    
-    await addKnowledge(newKnowledge.trim(), newSector, tags, sourceType);
-    
-    toast(`Knowledge securely injected to ${newSector} cluster`, "success");
-    
-    // Reset form
-    setNewKnowledge("");
-    setTags([]);
-    setTagInput("");
-    setIsAdding(false);
-    setProcessingStage(0);
+    try {
+      const res = await fetch('/api/knowledge/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `[${sourceType.toUpperCase()}] ${newSector} Verisi - ${newKnowledge.substring(0, 30)}...`,
+          content: newKnowledge.trim(),
+          type: sourceType,
+          source: sourceType === 'website' ? 'URL Extract' : 'Manual Entry'
+        })
+      });
+      const result = await res.json();
+      
+      setProcessingStage(2);
+      await new Promise(r => setTimeout(r, 600));
+      setProcessingStage(3);
+      await new Promise(r => setTimeout(r, 400));
+      
+      if (!res.ok) throw new Error(result.error);
+      
+      toast(`Bilgi başarıyla vektörlenip ${newSector} havuzuna eklendi!`, "success");
+      
+      const { data } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+      if (data) setRealDocuments(data);
+
+      setNewKnowledge("");
+      setTags([]);
+      setTagInput("");
+    } catch (e: any) {
+      toast(`Hata: ${e.message}`, "error");
+    } finally {
+      setIsAdding(false);
+      setProcessingStage(0);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteKnowledge(id);
-    toast("Knowledge entry wiped from memory", "info");
+    await supabase.from('documents').delete().eq('id', id);
+    setRealDocuments(prev => prev.filter(d => d.id !== id));
+    toast("Bilgi vektör uzayından tamamen silindi", "info");
+  };
+
+  const handleOracleQuery = async () => {
+    if (oracleQuery.trim().length < 3 || isOracleThinking) return;
+    setIsOracleThinking(true);
+    setOracleResponse(null);
+
+    try {
+      const res = await fetch('/api/knowledge/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: oracleQuery.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      setOracleResponse({
+        answer: data.answer,
+        sources: data.sources || []
+      });
+      setOracleQuery("");
+    } catch (e: any) {
+      toast(`Oracle Error: ${e.message}`, "error");
+    } finally {
+      setIsOracleThinking(false);
+    }
   };
 
   const stats = useMemo(() => ({
-    total: knowledgeBase.length,
+    total: realDocuments.length,
     bySector: SECTORS.map(s => ({
       label: s.label,
-      count: knowledgeBase.filter(k => k.sector === s.label).length,
+      count: realDocuments.filter(k => k.title.includes(s.label)).length,
       color: s.accent
     }))
-  }), [knowledgeBase]);
+  }), [realDocuments]);
 
   return (
     <div className="max-w-[1600px] animate-in fade-in duration-1000 pb-20">
       <PageHeader
         title="Teach Mode / Neural KB"
-        statusText={`${knowledgeBase.length} Vectors // ${isDbConnected ? 'Supabase: Active' : 'Offline Buffer'}`}
+        statusText={`${realDocuments.length} Vectors // Supabase: Active`}
         action={
           <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-mono font-black uppercase tracking-widest ${
-              isDbConnected 
-                ? 'bg-[#00ffd1]/10 border-[#00ffd1]/30 text-[#00ffd1]'
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-            }`}>
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-[10px] font-mono font-black uppercase tracking-widest bg-[#00ffd1]/10 border-[#00ffd1]/30 text-[#00ffd1]`}>
               <Database size={12} />
-              {isDbConnected ? 'DB Synced' : 'Session Only'}
+              pgvector Synced
             </div>
           </div>
         }
@@ -324,7 +376,7 @@ export default function KnowledgePage() {
                   <BrainCircuit size={48} className="text-white/5" />
                   <div className="space-y-2">
                     <p className="text-[12px] font-mono text-white/20 uppercase tracking-[0.3em] font-black">
-                      {knowledgeBase.length === 0 ? 'Memory Bank Empty' : 'No Vectors Match Query'}
+                      {realDocuments.length === 0 ? 'Memory Bank Empty' : 'No Vectors Match Query'}
                     </p>
                     <p className="text-[10px] font-mono text-white/10 uppercase tracking-widest">
                       Use the Teach Panel to populate the neural network.
@@ -348,13 +400,13 @@ export default function KnowledgePage() {
                     </div>
                     <div className="flex-1 min-w-0 space-y-4">
                       <p className="text-sm text-white/70 font-mono leading-relaxed group-hover:text-white transition-colors">
-                        {entry.content}
+                        {entry.title}
                       </p>
                       
                       <div className="flex items-center gap-x-6 gap-y-3 flex-wrap">
                         <div className="flex items-center gap-2">
                           <Database size={10} className="text-white/20" />
-                          <span className="text-[9px] font-mono text-white/30 uppercase tracking-widest">Sector: <span className="text-[#00ffd1]/80">{entry.sector}</span></span>
+                          <span className="text-[9px] font-mono text-white/30 uppercase tracking-widest">Type: <span className="text-[#00ffd1]/80">{entry.type}</span></span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Clock size={10} className="text-white/20" />
@@ -363,18 +415,12 @@ export default function KnowledgePage() {
                           </span>
                         </div>
                         
-                        {entry.tags && entry.tags.length > 0 && (
-                            <div className="flex items-center gap-2">
-                                <Tag size={10} className="text-[#00ffd1]/40" />
-                                <div className="flex gap-2">
-                                    {entry.tags.map(t => (
-                                        <span key={t} className="text-[8px] font-mono text-[#00ffd1]/60 uppercase tracking-widest bg-[#00ffd1]/5 px-2 py-0.5 rounded">
-                                            {t}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <Tag size={10} className="text-[#00ffd1]/40" />
+                          <span className="text-[8px] font-mono text-[#00ffd1]/60 uppercase tracking-widest bg-[#00ffd1]/5 px-2 py-0.5 rounded">
+                              Tokens: {entry.token_count || 0}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <button
@@ -441,7 +487,7 @@ export default function KnowledgePage() {
                   <div className="space-y-4">
                       <h4 className="text-[10px] font-mono font-black text-[#00ffd1] uppercase tracking-[0.3em]">Knowledge Integrity Report</h4>
                       <p className="text-sm text-white/40 leading-relaxed italic">
-                          "AIVA'nın uzun süreli hafızası şu an {knowledgeBase.length} farklı vektör düğümü üzerinden çapraz sorgulama yapabiliyor. Sektörel kümeler arasındaki semantik benzerlik %84.2 oranında optimize edildi."
+                          "AIVA'nın uzun süreli hafızası şu an {realDocuments.length} farklı vektör düğümü üzerinden çapraz sorgulama yapabiliyor. Sektörel kümeler arasındaki semantik benzerlik %84.2 oranında optimize edildi."
                       </p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -473,48 +519,57 @@ export default function KnowledgePage() {
                     Cross-Module Intelligence Query
                 </p>
                 <div className="space-y-6">
-                    <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-black text-white">U</span>
+                    {/* Oracle Response Area */}
+                    {isOracleThinking ? (
+                        <div className="flex items-center gap-3 p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/20 text-indigo-400">
+                            <Loader2 size={16} className="animate-spin" />
+                            <span className="text-xs font-mono uppercase tracking-widest">Searching Vector Space & Synthesizing...</span>
                         </div>
-                        <div className="flex-1 bg-white/5 border border-white/5 p-4 rounded-2xl rounded-tl-sm">
-                            <p className="text-sm text-white/80 font-mono">Dün Vapi üzerinden "fiyat yüksek" diyerek randevuyu reddeden hastalara bugün nasıl bir sms atmalıyız?</p>
-                        </div>
-                    </div>
-                    
-                    <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0">
-                            <Zap size={12} className="text-indigo-400" />
-                        </div>
-                        <div className="flex-1 bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-2xl rounded-tl-sm space-y-4">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="px-2 py-0.5 bg-black rounded text-[7px] font-mono text-[#00ffd1] border border-[#00ffd1]/20">Source: Vapi Logs</span>
-                                <span className="px-2 py-0.5 bg-black rounded text-[7px] font-mono text-indigo-400 border border-indigo-400/20">Source: Knowledge Node #42</span>
+                    ) : oracleResponse ? (
+                        <div className="flex gap-4">
+                            <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0">
+                                <Zap size={12} className="text-indigo-400" />
                             </div>
-                            <p className="text-sm text-white/90 leading-relaxed italic">
-                                "Dünkü analizlerime göre fiyat itirazı yapan hastalar kalite algısında şüphe yaşıyor. Kurumsal hafızamızdaki '7 aşamalı sterilizasyon' ve 'ömür boyu garanti' argümanlarını kullanarak onlara bir güven SMS'i tasarladım:"
-                            </p>
-                            <div className="p-4 bg-black/40 rounded-xl border border-white/5">
-                                <p className="text-xs font-mono text-white/60">
-                                    "Merhaba, sağlığınız paha biçilemez. İmplant tedavilerimizde kullandığımız 7 aşamalı Alman sterilizasyon protokolü ve ömür boyu garanti sertifikamız hakkında detaylı bilgi vermek için size ücretsiz bir danışmanlık tanımladık. Tıklayın: [Link]"
+                            <div className="flex-1 bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-2xl rounded-tl-sm space-y-4">
+                                {oracleResponse.sources.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                                        <span className="px-2 py-0.5 bg-black rounded text-[7px] font-mono text-indigo-400 border border-indigo-400/20">
+                                            Sources Found: {oracleResponse.sources.length}
+                                        </span>
+                                    </div>
+                                )}
+                                <p className="text-sm text-white/90 leading-relaxed italic">
+                                    "{oracleResponse.answer}"
                                 </p>
                             </div>
-                            <div className="flex justify-end gap-3 pt-2">
-                                <button className="text-[9px] font-mono text-white/40 hover:text-white uppercase tracking-widest transition-colors">Refine Tone</button>
-                                <button className="px-6 py-2 bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-400 transition-all shadow-[0_0_20px_rgba(99,102,241,0.2)]">Execute SMS Campaign</button>
+                        </div>
+                    ) : (
+                        <div className="flex gap-4 opacity-50">
+                            <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                                <span className="text-[10px] font-black text-white">U</span>
+                            </div>
+                            <div className="flex-1 bg-white/5 border border-white/5 p-4 rounded-2xl rounded-tl-sm">
+                                <p className="text-sm text-white/50 font-mono italic">AIVA OS hafızasına az önce kaydettiğiniz bilgilere dair bir soru sorun (Örn: Kliniğin çalışma saatleri nedir?)</p>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="relative mt-4">
                         <input 
                             type="text" 
+                            value={oracleQuery}
+                            onChange={e => setOracleQuery(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleOracleQuery()}
                             placeholder="Ask the Oracle..." 
-                            className="w-full bg-black/60 border border-white/10 rounded-2xl pl-6 pr-16 py-4 text-sm text-white font-mono focus:border-indigo-500/50 outline-none placeholder:text-white/20 transition-all"
-                            disabled
+                            className="w-full bg-black/60 border border-indigo-500/30 rounded-2xl pl-6 pr-16 py-4 text-sm text-white font-mono focus:border-indigo-500 outline-none placeholder:text-white/20 transition-all"
+                            disabled={isOracleThinking}
                         />
-                        <button className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors cursor-not-allowed">
-                            <Send size={14} className="text-white/40" />
+                        <button 
+                            onClick={handleOracleQuery}
+                            disabled={isOracleThinking || oracleQuery.trim().length < 3}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center hover:bg-indigo-500/40 text-indigo-400 transition-colors disabled:opacity-30"
+                        >
+                            <Send size={14} />
                         </button>
                     </div>
                 </div>

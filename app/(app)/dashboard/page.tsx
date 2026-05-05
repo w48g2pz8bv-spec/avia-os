@@ -27,25 +27,36 @@ import {
   AlertCircle,
   Box,
   ChevronRight,
-  Terminal
+  Terminal,
+  Loader2
 } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { selectedSector, activityLogs, efficiencyStats, addActivity, analyticsEvents, trackEvent, supabase, autonomousPlanning } = useApp();
-  const [leads, setLeads] = useState<any[]>([]);
-  const [pulseIndex, setPulseIndex] = useState(0);
+  const [realStats, setRealStats] = useState({ vapiCalls: 0, automationRuns: 0, memoryVectors: 0 });
+  const [omniCommand, setOmniCommand] = useState("");
+  const [omniResponse, setOmniResponse] = useState<string | null>(null);
+  const [isOmniThinking, setIsOmniThinking] = useState(false);
   const [neuralPlan, setNeuralPlan] = useState<any>(null);
 
-  // LOAD REAL DATA FOR ADVISOR
+  // LOAD REAL DATA FOR DASHBOARD
   useEffect(() => {
-    const loadData = async () => {
+    const fetchRealData = async () => {
         if (!supabase) return;
-        const { data: leadData } = await supabase.from('leads').select('*').limit(5);
-        if (leadData) setLeads(leadData);
+        const [{ count: vapiCount }, { count: autoCount }, { count: vectorCount }] = await Promise.all([
+            supabase.from('vapi_calls').select('*', { count: 'exact', head: true }),
+            supabase.from('automation_logs').select('*', { count: 'exact', head: true }),
+            supabase.from('document_chunks').select('*', { count: 'exact', head: true })
+        ]);
+        setRealStats({
+            vapiCalls: vapiCount || 0,
+            automationRuns: autoCount || 0,
+            memoryVectors: vectorCount || 0
+        });
     };
-    loadData();
+    fetchRealData();
   }, [supabase]);
 
   // SITUATION AWARENESS: Auto-trigger planning for anomalies
@@ -79,7 +90,7 @@ export default function DashboardPage() {
     });
 
     const ctaClicks = analyticsEvents.filter(e => e.name === 'cta_click').length;
-    const newLeads = leads.filter(l => l.status === 'New').length;
+    const newLeads = 0; // leads.filter(l => l.status === 'New').length;
 
     if (newLeads > 0) {
         insights.push({
@@ -112,7 +123,27 @@ export default function DashboardPage() {
     }
 
     return insights;
-  }, [analyticsEvents, leads, efficiencyStats, neuralPlan]);
+  }, [analyticsEvents, efficiencyStats, neuralPlan]);
+
+  const handleOmniSubmit = async () => {
+    if (!omniCommand.trim() || isOmniThinking) return;
+    setIsOmniThinking(true);
+    setOmniResponse(null);
+    try {
+        const res = await fetch('/api/omni', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: omniCommand, context: realStats })
+        });
+        const data = await res.json();
+        setOmniResponse(data.reply);
+        setOmniCommand("");
+    } catch (e: any) {
+        toast(`Omni Error: ${e.message}`, "error");
+    } finally {
+        setIsOmniThinking(false);
+    }
+  };
 
   const handleExecuteAction = async (id: string) => {
     addActivity(`Neural Execution Authorized: ${id}`, 'system');
@@ -153,14 +184,30 @@ export default function DashboardPage() {
                  <Terminal size={18} className="text-[#00ffd1]" />
                  <h2 className="text-[10px] font-mono font-black text-[#00ffd1] uppercase tracking-[0.4em] italic">Omni-Command // God Mode</h2>
              </div>
+             
+             {omniResponse && (
+                 <div className="p-4 bg-[#00ffd1]/10 border border-[#00ffd1]/30 rounded-xl mb-4">
+                     <p className="text-xs font-mono text-[#00ffd1] whitespace-pre-line">{omniResponse}</p>
+                 </div>
+             )}
+             
              <div className="relative">
                  <input 
                     type="text"
-                    placeholder="E.g., 'Launch a weekend dental implant campaign. Update Builder, set Vapi budget to $500, and pause reputation alerts.'"
+                    value={omniCommand}
+                    onChange={e => setOmniCommand(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleOmniSubmit()}
+                    placeholder="E.g., 'Sistemin genel durumunu özetle' veya 'Bugün kaç çağrı yaptık?'"
                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 pl-6 pr-40 text-sm font-mono text-white placeholder:text-white/20 outline-none focus:border-[#00ffd1]/40 focus:bg-[#00ffd1]/5 transition-all shadow-inner"
+                    disabled={isOmniThinking}
                  />
-                 <button className="absolute right-3 top-3 bottom-3 bg-[#00ffd1] text-black px-8 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-transform flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,209,0.3)]">
-                     <Sparkles size={14} /> Execute
+                 <button 
+                    onClick={handleOmniSubmit}
+                    disabled={isOmniThinking || !omniCommand.trim()}
+                    className="absolute right-3 top-3 bottom-3 bg-[#00ffd1] text-black px-8 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-transform flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,209,0.3)] disabled:opacity-50"
+                 >
+                     {isOmniThinking ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} 
+                     {isOmniThinking ? 'Executing...' : 'Execute'}
                  </button>
              </div>
          </div>
@@ -365,18 +412,17 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-4">
                  {[
-                    { label: 'Campaign Engine', pct: 100 },
-                    { label: 'Website Architect', pct: 100 },
-                    { label: 'Neural Voice Core', pct: (efficiencyStats.successRate - 4) },
-                    { label: 'Decision Rulebook', pct: 100 }
+                    { label: 'Neural Voice Calls', val: realStats.vapiCalls },
+                    { label: 'Automation Executions', val: realStats.automationRuns },
+                    { label: 'Knowledge Vectors', val: realStats.memoryVectors }
                  ].map((p, i) => (
                     <div key={i} className="space-y-2">
                        <div className="flex justify-between text-[9px] font-mono uppercase tracking-widest">
                           <span className="text-white/40">{p.label}</span>
-                          <span className="text-white/60 font-black">{p.pct.toFixed(0)}%</span>
+                          <span className="text-[#00ffd1] font-black text-sm">{p.val} <span className="text-[7px] text-white/30 ml-1">UNITS</span></span>
                        </div>
                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#00ffd1] transition-all duration-[2000ms]" style={{ width: `${p.pct}%` }} />
+                          <div className="h-full bg-gradient-to-r from-transparent to-[#00ffd1] transition-all duration-[2000ms]" style={{ width: `100%` }} />
                        </div>
                     </div>
                  ))}

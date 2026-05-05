@@ -35,42 +35,47 @@ export default function IntelligencePage() {
   const [activeTab, setActiveTab] = useState("COMPETITORS");
   const [isScanning, setIsScanning] = useState(false);
 
-  // --- RECONSTRUCTING THE DEEP COMPETITOR DATA ---
-  const competitors = useMemo(() => [
-    { 
-        name: "Global Health Dental", 
-        strength: "SEO Domain", 
-        weakness: "Response Latency", 
-        aivaEdge: "Vapi Voice Speed (840ms vs 2.4s)", 
-        risk: "Low",
-        score: 72 
-    },
-    { 
-        name: "Metropolis Dental Hub", 
-        strength: "Ad Spend", 
-        weakness: "Lead Nurturing", 
-        aivaEdge: "Autonomous CRM Recovery Loop", 
-        risk: "Medium",
-        score: 64 
-    },
-    { 
-        name: "City Smile Lab", 
-        strength: "Review Count", 
-        weakness: "Sentiment Consistency", 
-        aivaEdge: "Neural Reputation Injector", 
-        risk: "High",
-        score: 81 
-    }
-  ], []);
+  const [competitors, setCompetitors] = useState<any[]>([]);
+  const [marketInsights, setMarketInsights] = useState<any>({
+    dominanceLevel: "ANALYZING",
+    growthPotential: "0%",
+    summary: "Initiate probe to see market insights..."
+  });
 
-  const handleDeepProbe = () => {
+  const handleDeepProbe = async () => {
     setIsScanning(true);
     toast(`Initiating Competitive Probe for ${selectedSector.label}...`, "info");
-    setTimeout(() => {
+    
+    try {
+        const res = await fetch('/api/intelligence/probe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                sector: selectedSector.label,
+                context: "AIVA Neural OS Deployment"
+            })
+        });
+        const data = await res.json();
+        
+        if (data.competitors) {
+            setCompetitors(data.competitors);
+            setMarketInsights(data.marketInsights);
+            toast("Cross-Competitor Analysis Complete", "success");
+            addActivity(`${selectedSector.label} sektörü için derin rakip analizi tamamlandı.`, 'agent');
+        }
+    } catch (error) {
+        toast("Analysis failed", "error");
+    } finally {
         setIsScanning(false);
-        toast("Cross-Competitor Analysis Complete", "success");
-    }, 3000);
+    }
   };
+
+  // Initial scan
+  useEffect(() => {
+    if (competitors.length === 0 && !isScanning) {
+        handleDeepProbe();
+    }
+  }, [selectedSector]);
 
   return (
     <div className="max-w-[1600px] animate-in fade-in duration-1000 pb-20">
@@ -163,13 +168,13 @@ export default function IntelligencePage() {
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] mb-1">Dominance</p>
-                          <h4 className="text-5xl font-black text-[#00ffd1] italic tracking-tighter">ELITE</h4>
-                          <p className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest mt-2">+14.2% Growth</p>
+                          <h4 className="text-4xl font-black text-[#00ffd1] italic tracking-tighter uppercase">{marketInsights.dominanceLevel}</h4>
+                          <p className="text-[9px] font-mono text-emerald-500 uppercase tracking-widest mt-2">{marketInsights.growthPotential} Growth</p>
                       </div>
                   </div>
                   <div className="space-y-4 relative z-10">
-                      <p className="text-sm text-white/60 leading-relaxed italic">
-                          AIVA is outperforming the sector average by 42% in lead response times and 28% in appointment conversion.
+                      <p className="text-xs text-white/60 leading-relaxed italic px-4">
+                          {marketInsights.summary}
                       </p>
                   </div>
               </div>

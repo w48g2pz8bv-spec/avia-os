@@ -187,7 +187,7 @@ const statusStyles: Record<NodeStatus, string> = {
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 
 export default function AutomationsPage() {
-  const { addActivity, toast } = useApp();
+  const { addActivity, toast, supabase } = useApp();
   const [activeTab, setActiveTab] = useState<MainTab>("flows");
   const [selectedId, setSelectedId] = useState("wf-001");
   const [isSimulating, setIsSimulating] = useState(false);
@@ -198,14 +198,63 @@ export default function AutomationsPage() {
   const [builderTrigger, setBuilderTrigger] = useState<string | null>(null);
   const [builderActions, setBuilderActions] = useState<string[]>([]);
   const [filterCategory, setFilterCategory] = useState("Tümü");
+
+  // Gerçek Veritabanı State
+  const [realWorkflows, setRealWorkflows] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchFlows = async () => {
+      if (!supabase) return;
+      const { data } = await supabase.from('automations').select('*').order('created_at', { ascending: false });
+      if (data) setRealWorkflows(data);
+    };
+    if (activeTab === 'flows') fetchFlows();
+  }, [supabase, activeTab]);
+
+  const saveAutomation = async () => {
+    if (!supabase || !builderTrigger) return;
+    
+    // Basit bir test Node listesi oluştur
+    const triggerItem = TRIGGER_LIBRARY.find(t => t.id === builderTrigger);
+    const actionItems = builderActions.map(id => ACTION_LIBRARY.find(a => a.id === id)).filter(Boolean);
+    
+    const nodes = [
+      { id: "n1", type: "TRIGGER", label: triggerItem?.label, sublabel: triggerItem?.sublabel, config: {} },
+      ...actionItems.map((act, i) => ({
+        id: `n${i+2}`, type: "ACTION", label: act?.label, sublabel: act?.sublabel, config: {}
+      }))
+    ];
+
+    const { error } = await supabase.from('automations').insert({
+      title: `${triggerItem?.label} → Otomasyonu`,
+      category: triggerItem?.category,
+      trigger_type: triggerItem?.label,
+      description: 'Builder üzerinden oluşturuldu',
+      status: 'active',
+      nodes: nodes,
+    });
+
+    if (!error) {
+      toast("Otomasyon başarıyla yayınlandı!", "success");
+      setActiveTab("flows"); // Listeye geri dön
+      setBuilderStep(0);
+      setBuilderTrigger(null);
+      setBuilderActions([]);
+    } else {
+      console.error("Supabase Save Error:", error);
+      toast(`Hata: ${error.message || 'Bilinmeyen hata'}`, "error");
+    }
+  };
   const [searchQuery, setSearchQuery] = useState("");
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const currentFlow = WORKFLOWS.find(f => f.id === selectedId) || WORKFLOWS[0];
+  const currentFlow = realWorkflows.find(f => f.id === selectedId) || realWorkflows[0];
 
-  const filteredFlows = WORKFLOWS.filter(f => {
+  const filteredFlows = realWorkflows.filter(f => {
     const matchCat = filterCategory === "Tümü" || f.category === filterCategory;
-    const matchSearch = f.title.toLowerCase().includes(searchQuery.toLowerCase()) || f.sector.toLowerCase().includes(searchQuery.toLowerCase());
+    const title = f.title || "";
+    const sector = f.sector || "";
+    const matchSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) || sector.toLowerCase().includes(searchQuery.toLowerCase());
     return matchCat && matchSearch;
   });
 
@@ -216,28 +265,33 @@ export default function AutomationsPage() {
 
   useEffect(() => {
     const resetStatuses: Record<string, NodeStatus> = {};
-    currentFlow.nodes.forEach(n => { resetStatuses[n.id] = "idle"; });
+    if (currentFlow && currentFlow.nodes) {
+      currentFlow.nodes.forEach((n: any) => { resetStatuses[n.id] = "idle"; });
+    }
     setNodeStatuses(resetStatuses);
     setSimulationLogs([]);
     setActiveNodeIndex(null);
   }, [selectedId]);
 
   const handleRunSimulation = () => {
-    if (isSimulating) return;
+    if (isSimulating || !currentFlow) return;
     setIsSimulating(true);
     setSimulationLogs([]);
     const resetStatuses: Record<string, NodeStatus> = {};
-    currentFlow.nodes.forEach(n => { resetStatuses[n.id] = "idle"; });
+    if (currentFlow.nodes) {
+      currentFlow.nodes.forEach((n: any) => { resetStatuses[n.id] = "idle"; });
+    }
     setNodeStatuses(resetStatuses);
 
     addLog(`FLOW BAŞLATILDI: "${currentFlow.title}"`, "info");
-    addLog(`Tetikleyici: ${currentFlow.trigger}`, "info");
+    addLog(`Tetikleyici: ${currentFlow.trigger_type || 'Bilinmiyor'}`, "info");
     addActivity(`Automation test: ${currentFlow.title}`, 'system');
 
+    const nodes = currentFlow.nodes || [];
     let step = 0;
     const interval = setInterval(() => {
-      if (step < currentFlow.nodes.length) {
-        const node = currentFlow.nodes[step];
+      if (step < nodes.length) {
+        const node = nodes[step];
         setActiveNodeIndex(step);
         setNodeStatuses(prev => ({ ...prev, [node.id]: "running" }));
 
@@ -269,9 +323,9 @@ export default function AutomationsPage() {
     addLog("Simülasyon kullanıcı tarafından durduruldu.", "warn");
   };
 
-  const totalSavedHours = WORKFLOWS.reduce((s, f) => s + f.stats.savedHours, 0);
-  const totalRuns = WORKFLOWS.reduce((s, f) => s + f.stats.totalRuns, 0);
-  const activeCount = WORKFLOWS.filter(f => f.status === "active").length;
+  const totalSavedHours = realWorkflows.reduce((s, f) => s + (f.stats?.savedHours || 0), 0);
+  const totalRuns = realWorkflows.reduce((s, f) => s + (f.stats?.totalRuns || 0), 0);
+  const activeCount = realWorkflows.filter(f => f.status === "active").length;
 
   const TABS: { id: MainTab; label: string; icon: any }[] = [
     { id: "flows",    label: "Flow Merkezi",    icon: GitBranch },
@@ -309,7 +363,7 @@ export default function AutomationsPage() {
       <div className="grid grid-cols-4 gap-4 mb-10">
         {[
           { label: "Aktif Flow", value: `${activeCount}`, icon: Radio, color: "#00ffd1" },
-          { label: "Toplam Çalışma", value: totalRuns.toLocaleString(), icon: Activity, color: "#a78bfa" },
+          { label: "Toplam Çalışma", value: totalRuns.toLocaleString('en-US'), icon: Activity, color: "#a78bfa" },
           { label: "Başarı Oranı", value: "95.3%", icon: CheckCircle2, color: "#34d399" },
           { label: "Tasarruf Edilen Saat", value: `${totalSavedHours}h`, icon: Clock, color: "#f59e0b" },
         ].map((kpi) => (
@@ -369,7 +423,16 @@ export default function AutomationsPage() {
                 </select>
               </div>
 
-              {filteredFlows.map(flow => {
+              {realWorkflows.length === 0 ? (
+                <div className="p-12 text-center border border-white/5 bg-white/[0.02] rounded-3xl mt-4">
+                  <Zap size={48} className="mx-auto mb-4 text-[#00ffd1]/20" />
+                  <h3 className="text-white/60 font-mono uppercase tracking-widest text-sm mb-2">Henüz Otomasyon Yok</h3>
+                  <p className="text-white/30 text-[10px] font-mono uppercase mb-6 leading-relaxed">Veritabanında kayıtlı<br/>iş akışı bulunamadı.</p>
+                  <button onClick={() => { setActiveTab("builder"); setBuilderStep(0); }} className="px-6 py-3 bg-[#00ffd1]/10 text-[#00ffd1] border border-[#00ffd1]/20 rounded-xl font-mono text-[9px] font-black uppercase tracking-widest hover:bg-[#00ffd1]/20 transition-all flex items-center gap-2 mx-auto">
+                    <Plus size={14} /> Builder'ı Aç
+                  </button>
+                </div>
+              ) : filteredFlows.map(flow => {
                 const isSelected = flow.id === selectedId;
                 const catColors: Record<string, string> = {
                   Growth: "#00ffd1", Crisis: "#ef4444", Retention: "#a78bfa", Operations: "#60a5fa",
@@ -459,15 +522,16 @@ export default function AutomationsPage() {
 
             {/* RIGHT: FLOW VISUALIZER */}
             <div className="col-span-12 lg:col-span-7">
-              <div className="glass-panel h-full min-h-[700px] flex flex-col p-10 bg-black/40 relative overflow-hidden">
-                {/* Header */}
-                <div className="flex items-start justify-between border-b border-white/5 pb-8 mb-10">
-                  <div>
-                    <h4 className="text-2xl font-black text-white italic uppercase tracking-tight">{currentFlow.title}</h4>
-                    <p className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest mt-1">
-                      Trigger: {currentFlow.trigger} // Sektör: {currentFlow.sector}
-                    </p>
-                  </div>
+              {currentFlow ? (
+                <div className="glass-panel h-full min-h-[700px] flex flex-col p-10 bg-black/40 relative overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-start justify-between border-b border-white/5 pb-8 mb-10">
+                    <div>
+                      <h4 className="text-2xl font-black text-white italic uppercase tracking-tight">{currentFlow.title}</h4>
+                      <p className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest mt-1">
+                        Trigger: {currentFlow.trigger_type || currentFlow.trigger} // Sektör: {currentFlow.sector || 'Genel'}
+                      </p>
+                    </div>
                   <div className="flex gap-2">
                     <button
                       onClick={handleRunSimulation}
@@ -487,11 +551,11 @@ export default function AutomationsPage() {
                   {/* Vertical line */}
                   <div className="absolute left-7 top-6 bottom-6 w-[1px] bg-gradient-to-b from-[#00ffd1]/20 via-white/5 to-transparent" />
 
-                  {currentFlow.nodes.map((node, i) => {
-                    const style = nodeTypeStyles[node.type];
+                  {(currentFlow.nodes || []).map((node: any, i: number) => {
+                    const style = nodeTypeStyles[node.type as NodeType] || nodeTypeStyles.ACTION;
                     const status = nodeStatuses[node.id] || "idle";
                     const isActive = activeNodeIndex === i;
-                    const Icon = node.icon;
+                    const Icon = (typeof node.icon === 'function' || typeof node.icon === 'object') ? node.icon : Zap;
                     return (
                       <div key={node.id} className="relative flex gap-6">
                         {/* Node circle on line */}
@@ -541,6 +605,12 @@ export default function AutomationsPage() {
                   })}
                 </div>
               </div>
+            ) : (
+              <div className="glass-panel h-full min-h-[700px] flex flex-col items-center justify-center p-10 bg-black/40">
+                <Zap size={48} className="text-white/10 mb-4" />
+                <p className="text-white/30 font-mono text-sm uppercase tracking-widest">Henüz Otomasyon Seçilmedi</p>
+              </div>
+            )}
             </div>
           </motion.div>
         )}
@@ -653,7 +723,7 @@ export default function AutomationsPage() {
                   <div className="flex gap-4">
                     <button onClick={() => setBuilderStep(1)} className="px-6 py-3 rounded-xl border border-white/10 text-white/30 text-[10px] font-mono uppercase tracking-widest hover:border-white/20 transition-all">Geri</button>
                     <button
-                      onClick={() => { setBuilderStep(0); setBuilderTrigger(null); setBuilderActions([]); setActiveTab("flows"); toast("Flow yayınlandı!", "success"); addActivity("Yeni automation oluşturuldu", "system"); }}
+                      onClick={saveAutomation}
                       className="px-8 py-3 rounded-xl bg-[#00ffd1] text-black font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all"
                     >
                       Yayınla
