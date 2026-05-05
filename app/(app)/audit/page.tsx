@@ -30,9 +30,9 @@ import {
 import { useToast } from "@/lib/toast-context";
 
 export default function AuditPage() {
-  const context = useApp();
+  useApp();
   const { toast } = useToast();
-  const addStrategicFinding = context?.addStrategicFinding || (() => {});
+  const addStrategicFinding = () => {};
 
   const [url, setUrl] = useState("");
   const [isScanning, setIsScanning] = useState(false);

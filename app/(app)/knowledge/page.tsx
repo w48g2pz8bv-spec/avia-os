@@ -18,7 +18,11 @@ import {
   FileText,
   Keyboard,
   Cpu,
-  X
+  X,
+  Zap,
+  RefreshCcw,
+  MessageSquare,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
 
@@ -387,8 +391,7 @@ export default function KnowledgePage() {
           </div>
         </div>
       </div>
-      </div>
-      
+
       {/* NEW: NEURAL DISTRIBUTION MAP */}
       <div className="mt-12 glass-panel p-10 bg-gradient-to-br from-[#00ffd1]/5 to-transparent border-[#00ffd1]/10">
           <div className="flex items-center gap-4 mb-10">
