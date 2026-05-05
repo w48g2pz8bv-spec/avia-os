@@ -109,25 +109,47 @@ export default function AutomationsPage() {
     if (isSimulating) return;
     setIsSimulating(true);
     setSimulationLogs([]);
-    addLog(`TRIGGER_FIRED: ${currentFlow.trigger}`);
+    addLog(`[SYSTEM] LISTENING FOR EVENT: ${currentFlow.trigger}`);
     addActivity(`Automation Triggered: ${currentFlow.title}`, 'system');
     
+    // Simulate incoming webhook payload
+    setTimeout(() => {
+        addLog(`[WEBHOOK] Payload Received: { name: "Ahmet Yılmaz", intent: "Implant", phone: "+90532..." }`);
+    }, 500);
+
     let step = 0;
     const interval = setInterval(() => {
         if (step < currentFlow.logic.length) {
             setActiveNodeIndex(step);
-            addLog(`EXECUTING_${currentFlow.logic[step].type.toUpperCase()}: ${currentFlow.logic[step].label}`);
+            const node = currentFlow.logic[step];
+            addLog(`[EXECUTING: ${node.type.toUpperCase()}] ${node.label}`);
+            
+            if (node.label.includes("Vapi")) {
+                addLog(`[VAPI_API] Bridging Neural Link... Outbound Call Initiated.`);
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance("Initiating outbound AI voice protocol for new lead.");
+                    utterance.rate = 1.1;
+                    utterance.pitch = 0.9;
+                    utterance.lang = "en-US";
+                    window.speechSynthesis.speak(utterance);
+                }
+            }
+            if (node.label.includes("Condition")) {
+                addLog(`[EVAL] Condition met. Routing to: ${node.next}`);
+            }
+            
             step++;
         } else {
             clearInterval(interval);
             setIsSimulating(false);
             setActiveNodeIndex(null);
-            addLog(`FLOW_COMPLETE: Success 100%`);
+            addLog(`[FLOW_COMPLETE] Status: 200 OK. Lead successfully processed.`);
             addActivity(`Automation Complete: ${currentFlow.title} — All nodes passed`, 'system');
             addToQueue(`Automation_${currentFlow.category}_Sync`);
-            toast("Logic Simulation Successful", "success");
+            toast("Automation Executed Successfully", "success");
         }
-    }, 1500);
+    }, 1800);
   };
 
   const injectNode = () => {
@@ -233,9 +255,11 @@ export default function AutomationsPage() {
                     {currentFlow.logic.map((node, i) => (
                         <div key={i} className="relative">
                             {i !== 0 && (
-                                <div className={`absolute -top-12 left-6 w-px h-12 transition-all duration-1000 ${
-                                    activeNodeIndex !== null && activeNodeIndex >= i ? 'bg-[#00ffd1] shadow-[0_0_10px_#00ffd1]' : 'bg-white/5'
-                                }`} />
+                                <div className="absolute -top-12 left-6 w-px h-12 bg-white/5 overflow-hidden">
+                                    <div className={`w-full bg-gradient-to-b from-[#00ffd1] to-transparent transition-all duration-[1.8s] ease-linear ${
+                                        activeNodeIndex !== null && activeNodeIndex >= i ? 'h-full animate-slide-down shadow-[0_0_15px_#00ffd1]' : 'h-0'
+                                    }`} />
+                                </div>
                             )}
                             <div className={`flex items-center gap-8 group transition-all duration-500 ${
                                 activeNodeIndex === i ? 'scale-110' : ''
