@@ -509,6 +509,68 @@ function buildPlatformJsonTemplate(platform: string): string {
   }`;
 }
 
+// ─── SALES AGENT SPECIFIC PROMPT BUILDER ─────────────────────────────────────
+/**
+ * Vapi ve benzeri sesli AI ajanları için yüksek dönüşümlü satış senaryoları üretir.
+ * Odak: B2B, B2C, Randevu Alma, İtiraz Karşılama.
+ */
+export function buildSalesAgentPrompt(
+  industry:   string,
+  product:    string,
+  goal:       string,
+  nicheLabel: string,
+): string {
+  return `Sen dünya standartlarında bir Satış Stratejisti ve Profesyonel bir Satış Temsilcisisin. 
+AIVA OS bünyesindeki sesli AI ajanları (Vapi) için yüksek ikna kabiliyetine sahip bir arama senaryosu hazırlıyorsun.
+
+SEKTÖR: ${nicheLabel}
+ÜRÜN/HİZMET: ${product}
+ARAMA HEDEFİ: ${goal}
+
+━━━ SATIŞ METODOLOJİSİ (ZORUNLU) ━━━
+Senaryoyu aşağıdaki 5 aşamalı 'Neural Conversion' yapısına göre kur:
+
+1. AÇILIŞ KANCASI (0-10s):
+   - Standart "Nasılsınız?" yerine, "X konusundaki son trendleri incelerken sizin işletmenizi fark ettim" gibi kişiselleştirilmiş bir merak uyandırıcı kullan.
+   - İzni al: "Kısa bir vaktiniz var mı yoksa yanlış bir zamanda mı aradım?"
+
+2. PROBLEM VE AJİTASYON (PAS):
+   - Sektöre özel bir 'pain point' (ağrı noktası) seç. "Çoğu işletme X hatasını yapıyor ve bu da ayda ortalama Y kaybına neden oluyor."
+   - Bu kaybın neden bugün çözülmesi gerektiğini hissettir.
+
+3. ÇÖZÜM VE OTORİTE:
+   - Ürünün/hizmetin bu sorunu nasıl "otonom" veya "zahmetsiz" çözdüğünü anlat.
+   - Sosyal kanıt ekle: "Daha önce [Rakip/Benzer Sektör] ile çalışırken bu sorunu 2 haftada çözdük."
+
+4. İTİRAZ KARŞILAMA (PRE-EMPTIVE):
+   - En yaygın itirazları (Fiyat, Zaman, "Düşünmem lazım") daha onlar söylemeden yumuşat.
+   - "Genelde insanlar X'i merak ediyor, ancak biz Y yaklaşımıyla bunu aşıyoruz."
+
+5. NET KAPANIŞ (CTA):
+   - İki seçenekli kapanış: "Salı 14:00 mü yoksa Çarşamba sabahı mı uygun olur?"
+   - Belirsiz bırakma.
+
+━━━ TON VE ÜSLUP ━━━
+- Profesyonel, enerjik ama dürüst.
+- "Robotik" kelimelerden kaçın (örn: 'Değerli müşterimiz', 'Sistemimiz gereği').
+- Kısa, vurucu ve diyaloğa açık cümleler.
+
+SADECE geçerli JSON döndür:
+{
+  "sales_script": {
+    "opening": "Tam metin — kişiselleştirilmiş kanca",
+    "discovery_questions": ["Soru 1", "Soru 2"],
+    "value_proposition": "Ürünün ana faydası — hikayeleştirilmiş",
+    "objection_handling": {
+      "price": "Fiyat itirazına yanıt metni",
+      "time": "Zaman itirazına yanıt metni"
+    },
+    "closing": "Net randevu alma metni",
+    "follow_up_note": "Arama sonrası için kısa mesaj/e-posta taslağı"
+  }
+}`;
+}
+
 // ─── Legacy: buildScriptSection (backward compat) ────────────────────────────
 // Eski route kodu hâlâ kullanıyorsa çalışmaya devam eder
 

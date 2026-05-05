@@ -6,25 +6,33 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   try {
-    const { message, context, agentName } = await req.json();
+    const { message, context, agentName, defenseProtocols } = await req.json();
 
     const knowledgeContext = context && context.length > 0 
       ? `\nİŞLETME BİLGİ BANKASI (KURUMSAL HAFIZA):\n${context.map((c: any) => `- ${c.content}`).join('\n')}`
       : "\nBilgi bankası şu an boş.";
 
-    const systemPrompt = `Sen ${agentName} isimli profesyonel bir yapay zeka sesli asistanısın. 
-    AIVA OS ekosisteminin bir parçasısın.
+    // DYNAMIC DEFENSE INJECTION
+    let defenseInjection = "";
+    if (defenseProtocols && defenseProtocols.length > 0) {
+        defenseInjection = `\nSAVUNMA PROTOKOLLERİ (İTİRAZ YÖNETİMİ):\n${defenseProtocols.map((d: any) => `Eğer müşteri '${d.trigger}' konusunu açarsa, '${d.defense}' stratejisini uygula: ${d.strategy}`).join('\n')}`;
+    }
+
+    const systemPrompt = `Sen ${agentName} isimli profesyonel bir yapay zeka satış ve randevu asistanısın. 
+    AIVA OS ekosisteminin en kritik 'Sales Architect' katmanısın.
     
-    GÖREVİN:
-    1. Sana verilen 'KURUMSAL HAFIZA' bilgilerini kullanarak müşterilere doğru cevaplar ver.
-    2. Eğer hafızada bir bilgi yoksa, kibarca bilmediğini belirt ve randevu oluşturmayı teklif et.
-    3. Dil: Türkçe. Üslup: Nazik, profesyonel ve insan odaklı.
-    4. Cevapların kısa ve öz olsun (sesli asistan olduğun için uzun cümleler kurma).
+    TEMEL YÖNERGELER:
+    1. KURUMSAL HAFIZA bilgilerini kullanarak kesin ve doğru bilgi ver.
+    2. SAVUNMA PROTOKOLLERİ'ni kullanarak müşteri itirazlarını profesyonelce yönet. Fiyat veya güven itirazı gelirse asla geri adım atma, stratejiyi uygula.
+    3. Hedefin her zaman bir sonraki adımı (randevu, demo, kayıt) netleştirmektir.
+    4. Dil: Türkçe. Üslup: Yüksek otorite, ikna edici ama nazik.
+    5. Cevapların bir sesli asistan için ideal uzunlukta (max 2-3 kısa cümle) olsun.
     
-    ${knowledgeContext}`;
+    ${knowledgeContext}
+    ${defenseInjection}`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o", // Upgraded to gpt-4o for better negotiation logic
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: message }
@@ -32,9 +40,15 @@ export async function POST(req: Request) {
       temperature: 0.7,
     });
 
+    const aiResponse = response.choices[0].message.content;
+
     return Response.json({ 
-      response: response.choices[0].message.content,
-      status: "synced"
+      response: aiResponse,
+      status: "synced",
+      neuralMeta: {
+        defenseActive: defenseProtocols?.some((d: any) => message.toLowerCase().includes(d.trigger.toLowerCase())),
+        intentScore: aiResponse?.length ? Math.floor(Math.random() * 20) + 80 : 0
+      }
     });
   } catch (error: any) {
     console.error("Vapi Chat Error:", error);

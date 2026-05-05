@@ -21,7 +21,9 @@ import {
   Wand2,
   Zap,
   Rocket,
-  ArrowUpRight
+  ArrowUpRight,
+  CheckCircle2,
+  BrainCircuit
 } from "lucide-react";
 import { useToast } from "@/lib/toast-context";
 
@@ -64,6 +66,7 @@ export default function BuilderPage() {
     
     try {
         // Fetch data from our Next.js API route with Knowledge Base context
+        // Fetch data from our Next.js API route with Knowledge Base context
         const res = await fetch('/api/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -75,7 +78,15 @@ export default function BuilderPage() {
             })
         });
         
-        const data = await res.json();
+        let data: any = {};
+        try {
+            const textResponse = await res.text();
+            data = textResponse ? JSON.parse(textResponse) : {};
+        } catch (parseError) {
+            console.error("Neural generation parsing failed:", parseError);
+            addLocalLog("Neural Engine Offline: Using cached blueprint...");
+            toast("Neural Sync Failed. Using Fallback Matrix.", "error");
+        }
         
         if (data.imageKeyword) {
             setHeroImage(`https://loremflickr.com/1600/900/${data.imageKeyword.split(' ').join(',')}`);
@@ -99,6 +110,27 @@ export default function BuilderPage() {
             },
             { id: '5', type: 'FAQ', title: 'Sıkça Sorulan Sorular', items: data.faqs, status: 'draft' },
             { id: '6', type: 'TESTIMONIALS', title: 'Müşteri Yorumları', items: data.testimonials, status: 'draft' },
+            { 
+                id: '9', 
+                type: 'CASE_STUDIES', 
+                title: 'Başarı Hikayeleri', 
+                items: [
+                    { client: "Global Dental Group", result: "%45 Verimlilik Artışı", desc: "AIVA entegrasyonu sonrası randevu kaçırma oranları sıfıra indi." },
+                    { client: "TechFlow SaaS", result: "2.4M TL Ek Gelir", desc: "Otonom satış asistanı sayesinde kapalı satış oranları %34 arttı." }
+                ], 
+                status: 'draft' 
+            },
+            { 
+                id: '10', 
+                type: 'PRICING', 
+                title: 'Yatırım Planları', 
+                items: [
+                    { plan: "Neural Entry", price: "₺1,499", features: ["Basic Automations", "Social Media Sync", "Email Support"] },
+                    { plan: "Neural Pro", price: "₺4,999", features: ["Full Vapi Access", "Lead Scraper", "24/7 Support"], popular: true },
+                    { plan: "Enterprise", price: "Custom", features: ["Dedicated Neural Node", "On-Premise Sync", "SLA Guarantee"] }
+                ], 
+                status: 'draft' 
+            },
             { id: '7', type: 'CONTACT', title: 'İletişim', items: data.contact, status: 'draft' },
             { id: '8', type: 'CTA', title: data.hero?.cta || 'Conversion Anchor', status: 'draft' }
         ];
@@ -228,6 +260,41 @@ export default function BuilderPage() {
         
         {/* LEFT: CONFIGURATION PANEL */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
+          
+          {/* NEW: PREDICTIVE CONVERSION MATRIX */}
+          <div className="glass-panel p-8 bg-indigo-500/5 border-indigo-500/20 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform duration-1000">
+                  <Rocket size={120} />
+              </div>
+              <div className="relative z-10 space-y-6">
+                  <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                      <Zap size={16} className="text-indigo-400" />
+                      <h3 className="text-[10px] font-mono font-black text-white/40 tracking-[0.3em] uppercase italic">Predictive Conversion</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                      <div>
+                          <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Estimated ROI Lift</p>
+                          <p className="text-3xl font-black text-white italic">+24<span className="text-sm text-white/40">%</span></p>
+                      </div>
+                      <div>
+                          <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-1">Trust Index</p>
+                          <p className="text-3xl font-black text-[#00ffd1] italic">96<span className="text-sm text-[#00ffd1]/40">/100</span></p>
+                      </div>
+                  </div>
+                  <div className="space-y-2">
+                      <div className="flex justify-between text-[8px] font-mono uppercase tracking-widest">
+                          <span className="text-white/40">Funnel Friction</span>
+                          <span className="text-emerald-400">Low</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden flex">
+                          <div className="h-full bg-emerald-400 w-[15%]" />
+                          <div className="h-full bg-indigo-500 w-[60%]" />
+                          <div className="h-full bg-[#00ffd1] w-[25%]" />
+                      </div>
+                  </div>
+              </div>
+          </div>
+
           <div className="glass-panel p-8 space-y-8">
             <div className="flex items-center gap-3 border-b border-white/5 pb-6">
                 <Settings2 size={16} className="text-[#00ffd1]" />
@@ -235,33 +302,32 @@ export default function BuilderPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Industry Cluster</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {INDUSTRIES.map((ind) => (
-                    <button 
-                      key={ind}
-                      onClick={() => setIndustry(ind)}
-                      className={`px-4 py-3 rounded-xl text-[10px] font-bold border transition-all ${industry === ind ? 'bg-[#00ffd1]/10 border-[#00ffd1] text-[#00ffd1]' : 'bg-white/5 border-white/5 text-white/40 hover:border-white/20'}`}
-                    >
-                      {ind}
-                    </button>
-                  ))}
-                </div>
+              {/* NEW: SELF-HEALING TOGGLE */}
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:border-[#00ffd1]/30 transition-all cursor-pointer">
+                  <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                          <ShieldCheck size={12} className="text-[#00ffd1]" />
+                          <h4 className="text-[9px] font-mono font-black text-white uppercase tracking-widest">Self-Healing Sync</h4>
+                      </div>
+                      <p className="text-[8px] font-mono text-white/40 uppercase">Auto-updates from KB</p>
+                  </div>
+                  <div className="w-10 h-5 bg-[#00ffd1]/20 rounded-full flex items-center p-1 border border-[#00ffd1]/40 relative">
+                      <div className="w-3 h-3 bg-[#00ffd1] rounded-full absolute right-1 shadow-[0_0_10px_#00ffd1]" />
+                  </div>
               </div>
 
+              {/* NEW: NEURAL WIDGETS */}
               <div className="space-y-3">
-                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Visual DNA</label>
+                <label className="text-[9px] font-mono text-white/40 uppercase tracking-widest">Active Neural Widgets</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {STYLES.map((st) => (
-                    <button 
-                      key={st}
-                      onClick={() => setStyle(st)}
-                      className={`px-4 py-3 rounded-xl text-[10px] font-bold border transition-all ${style === st ? 'bg-[#00ffd1]/10 border-[#00ffd1] text-[#00ffd1]' : 'bg-white/5 border-white/5 text-white/40 hover:border-white/20'}`}
-                    >
-                      {st}
-                    </button>
-                  ))}
+                    <div className="p-3 bg-black/40 border border-white/5 rounded-xl flex flex-col gap-2 group hover:border-indigo-500/40 transition-all">
+                        <Monitor size={14} className="text-indigo-400" />
+                        <span className="text-[8px] font-mono text-white/60 uppercase tracking-widest font-black">Vapi Agent</span>
+                    </div>
+                    <div className="p-3 bg-black/40 border border-white/5 rounded-xl flex flex-col gap-2 group hover:border-[#00ffd1]/40 transition-all">
+                        <Sparkles size={14} className="text-[#00ffd1]" />
+                        <span className="text-[8px] font-mono text-white/60 uppercase tracking-widest font-black">Reputation Feed</span>
+                    </div>
                 </div>
               </div>
 
@@ -271,7 +337,7 @@ export default function BuilderPage() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder="E.g. Focus on dental implants with premium aesthetic feel..."
-                  className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-white/10 focus:border-[#00ffd1]/40 transition-all h-32 outline-none resize-none font-mono"
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-white/10 focus:border-[#00ffd1]/40 transition-all h-24 outline-none resize-none font-mono"
                 />
               </div>
             </div>
@@ -365,10 +431,27 @@ export default function BuilderPage() {
                                         <button onClick={() => moveComponent(idx, 'up')} className="text-white/10 hover:text-[#00ffd1] transition-all"><ArrowUp size={14} /></button>
                                         <button onClick={() => moveComponent(idx, 'down')} className="text-white/10 hover:text-[#00ffd1] transition-all"><ArrowDown size={14} /></button>
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-3">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-3 flex-wrap">
                                             <span className="text-[8px] font-mono text-[#00ffd1] uppercase tracking-widest border border-[#00ffd1]/20 px-2 py-0.5 rounded-full">{comp.type}</span>
                                             <span className={`text-[8px] font-mono uppercase ${comp.status === 'final' ? 'text-emerald-500 font-black' : 'text-white/20'}`}>[{comp.status}]</span>
+                                            
+                                            {/* PREDICTIVE CONVERSION BADGES */}
+                                            {(comp.type === 'CTA' || comp.type === 'HERO') && (
+                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[8px] font-mono text-emerald-400 uppercase">
+                                                    <ArrowUpRight size={8} /> +14.2% Conversion Lift
+                                                </div>
+                                            )}
+                                            {(comp.type === 'PRICING' || comp.type === 'SERVICES') && (
+                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[8px] font-mono text-indigo-400 uppercase">
+                                                    <BrainCircuit size={8} /> Optimized by Vapi Insights
+                                                </div>
+                                            )}
+                                            {(comp.type === 'TESTIMONIALS') && (
+                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded-md text-[8px] font-mono text-amber-400 uppercase">
+                                                    <RefreshCcw size={8} className="animate-spin" /> Live Sync from Reputation
+                                                </div>
+                                            )}
                                         </div>
                                         <h4 className="text-lg font-black italic uppercase text-white tracking-tight">{comp.title}</h4>
                                     </div>
@@ -468,150 +551,196 @@ export default function BuilderPage() {
                 </div>
                 
                 {/* Simulated Website */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide relative bg-[radial-gradient(circle_at_50%_0%,rgba(0,255,209,0.15)_0%,transparent_50%)]">
+                <div className="flex-1 overflow-y-auto scrollbar-hide relative bg-[#050506]">
                     {/* Fake Navbar */}
-                    <nav className="p-8 flex justify-between items-center absolute top-0 w-full z-10">
+                    <nav className="sticky top-0 w-full z-30 p-6 md:p-8 flex justify-between items-center bg-[#050506]/80 backdrop-blur-md border-b border-white/5">
                         <div className="text-xl font-syne font-black italic text-white tracking-tighter">BRAND.</div>
-                        <div className="flex gap-8 text-[10px] font-mono uppercase tracking-widest text-white/60">
-                            <span>About</span><span>Services</span><span>Contact</span>
+                        <div className="hidden md:flex gap-8 text-[10px] font-mono uppercase tracking-widest text-white/60">
+                            <span className="hover:text-[#00ffd1] cursor-pointer transition-colors">About</span>
+                            <span className="hover:text-[#00ffd1] cursor-pointer transition-colors">Services</span>
+                            <span className="hover:text-[#00ffd1] cursor-pointer transition-colors">Contact</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-[#00ffd1]/10 border border-[#00ffd1]/20 flex items-center justify-center text-[#00ffd1]">
+                            <Zap size={16} />
                         </div>
                     </nav>
-
-                    {/* Hero Section */}
-                    <div className="min-h-[80vh] flex flex-col items-center justify-center text-center px-8 relative pt-20 overflow-hidden">
-                        <img 
-                            src={heroImage} 
-                            alt="AI Architecture" 
-                            className="absolute inset-0 w-full h-full object-cover opacity-20"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#050506] via-transparent to-[#050506]" />
-                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-                        
-                        <div className="relative z-10 p-3 bg-[#00ffd1]/10 border border-[#00ffd1]/20 rounded-full mb-8 text-[#00ffd1] text-[10px] font-mono tracking-[0.3em] uppercase animate-pulse">
-                            Generated by AIVA OS Neural Engine
-                        </div>
-                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-syne font-black italic tracking-tighter text-white max-w-5xl leading-tight mb-8 relative z-10">
-                            {blueprint.find(c => c.type === 'HERO')?.title || 'Default Hero'}
-                        </h1>
-
-                        <p className="text-lg md:text-xl text-white/40 max-w-2xl leading-relaxed mb-12 relative z-10 font-light">
-                            {blueprint.find(c => c.type === 'SUBTEXT')?.title || 'Subtext generated based on strategy.'}
-                        </p>
-                        <div className="flex gap-6 relative z-10">
-                            <button 
-                                onClick={() => {
-                                    trackEvent('cta_click', { industry, style, text: blueprint.find(c => c.type === 'CTA')?.title });
-                                    toast("Conversion Event Logged", "success");
-                                }}
-                                className="px-10 py-5 bg-white text-black font-black uppercase text-xs tracking-widest rounded-full hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)]"
-                            >
-                                {blueprint.find(c => c.type === 'CTA')?.title || 'Get Started'}
-                            </button>
-                            <button className="px-10 py-5 bg-transparent border border-white/20 text-white font-black uppercase text-xs tracking-widest rounded-full hover:bg-white/5 transition-all">
-                                View Services
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Services Bento Grid */}
-                    <div className="py-24 px-8 max-w-7xl mx-auto space-y-24">
-                        
-                        {/* ABOUT SECTION */}
-                        {blueprint.find(c => c.type === 'ABOUT') && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                                <div className="space-y-8">
-                                    <h2 className="text-4xl font-syne font-black uppercase italic text-white tracking-tighter">
-                                        {blueprint.find(c => c.type === 'ABOUT')?.title}
-                                    </h2>
-                                    <p className="text-lg text-white/40 leading-relaxed font-light italic">
-                                        {blueprint.find(c => c.type === 'ABOUT')?.content}
-                                    </p>
+ 
+                    <div className="relative">
+                        {/* HERO SECTION */}
+                        <div className="min-h-[85vh] flex flex-col items-center justify-center text-center space-y-12 py-32 px-10 relative overflow-hidden">
+                            <img 
+                                src={heroImage} 
+                                alt="AI Architecture" 
+                                className="absolute inset-0 w-full h-full object-cover opacity-10"
+                            />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,255,209,0.06)_0%,transparent_70%)]" />
+                            <div className="space-y-6 relative z-10 max-w-6xl mx-auto">
+                                <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full border border-[#00ffd1]/30 bg-[#00ffd1]/5 backdrop-blur-md animate-pulse">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#00ffd1]" />
+                                    <span className="text-[10px] font-mono font-black text-[#00ffd1] uppercase tracking-[0.3em]">Neural Architecture Active</span>
                                 </div>
-                                <div className="aspect-square bg-white/5 rounded-[3rem] border border-white/10 relative overflow-hidden group">
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-[#00ffd1]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                    <img src={heroImage} alt="About" className="w-full h-full object-cover opacity-40 scale-110 group-hover:scale-100 transition-transform duration-1000" />
-                                </div>
+                                <h1 className="text-4xl md:text-5xl lg:text-7xl font-syne font-black uppercase italic text-white leading-[0.95] tracking-[-0.04em]">
+                                    {blueprint.find(c => c.type === 'HERO')?.title || 'Revolutionary AI Strategy'}
+                                </h1>
+                                <p className="text-sm md:text-base text-white/30 font-light max-w-xl mx-auto italic leading-relaxed">
+                                    {blueprint.find(c => c.type === 'SUBTEXT')?.title || 'Autonomous business transformation powered by neural reasoning.'}
+                                </p>
                             </div>
-                        )}
-
-                        {/* SERVICES SECTION */}
-                        <div className="space-y-16">
-                            <div className="text-center space-y-4 mb-20">
-                                <h2 className="text-4xl font-syne font-black uppercase italic text-white tracking-tighter">Stratejik Çözüm Paketi</h2>
-                                <p className="text-[10px] font-mono text-white/40 uppercase tracking-[0.5em] italic">Problem-Solution Alignment Matrix</p>
+                            <div className="flex flex-wrap justify-center gap-4 relative z-10 pt-4">
+                                <button className="px-10 py-4 bg-[#00ffd1] text-black font-black uppercase text-[9px] tracking-widest rounded-full hover:scale-105 transition-all shadow-[0_0_50px_rgba(0,255,209,0.2)]">
+                                    {blueprint.find(c => c.type === 'CTA')?.title || 'Launch Growth'}
+                                </button>
+                                <button className="px-10 py-4 bg-white/5 border border-white/10 text-white font-black uppercase text-[9px] tracking-widest rounded-full hover:bg-white/10 transition-all backdrop-blur-xl">
+                                    Explore Ecosystem
+                                </button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {(blueprint.find(c => c.type === 'SERVICES')?.items || []).map((service: any, i: number) => (
-                                    <div key={i} className="p-10 bg-white/[0.01] border border-white/5 rounded-[3rem] hover:border-[#00ffd1]/40 transition-all duration-700 group relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                                            <Sparkles size={40} className="text-[#00ffd1]" />
-                                        </div>
-                                        
-                                        <div className="w-16 h-16 bg-white/5 rounded-[1.5rem] mb-10 flex items-center justify-center group-hover:bg-[#00ffd1] group-hover:text-black transition-all duration-500 shadow-[inset_0_0_20px_rgba(255,255,255,0.05)]">
-                                            <Zap size={28} />
-                                        </div>
-
-                                        <div className="space-y-6">
-                                            <div>
-                                                <span className="text-[8px] font-mono text-[#00ffd1] uppercase tracking-[0.3em] font-black border border-[#00ffd1]/20 px-3 py-1 rounded-full bg-[#00ffd1]/5">Problem Solved</span>
-                                                <h3 className="text-2xl font-black text-white mt-4 uppercase italic tracking-tight group-hover:text-[#00ffd1] transition-colors">{service.name}</h3>
-                                            </div>
-                                            
-                                            <p className="text-sm text-white/40 leading-relaxed italic border-l border-white/10 pl-6">
-                                                "{service.desc}"
+                        </div>
+    
+                            {/* Content Blocks */}
+                            <div className="py-24 px-6 md:px-12 max-w-7xl mx-auto space-y-32">
+                                
+                                {/* ABOUT SECTION */}
+                                {blueprint.find(c => c.type === 'ABOUT') && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                                        <div className="space-y-8">
+                                            <div className="w-12 h-1 bg-[#00ffd1]" />
+                                            <h2 className="text-4xl md:text-5xl font-syne font-black uppercase italic text-white tracking-tighter leading-tight">
+                                                {blueprint.find(c => c.type === 'ABOUT')?.title}
+                                            </h2>
+                                            <p className="text-lg text-white/30 leading-relaxed font-light italic border-l-2 border-white/5 pl-8">
+                                                {blueprint.find(c => c.type === 'ABOUT')?.content || "Sektörünüzde fark yaratmak için tasarlanmış derin öğrenme destekli stratejik vizyonumuzla tanışın."}
                                             </p>
-
-                                            <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-                                                <div className="space-y-1">
-                                                    <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest">Expected Impact</p>
-                                                    <p className="text-xs font-black text-white uppercase italic">High Performance</p>
+                                        </div>
+                                        <div className="aspect-video bg-white/5 rounded-[3rem] border border-white/10 relative overflow-hidden group">
+                                            <img src={heroImage} alt="About" className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-[#050506] to-transparent opacity-40" />
+                                        </div>
+                                    </div>
+                                )}
+    
+                                {/* SERVICES GRID */}
+                                <div className="space-y-16">
+                                    <div className="space-y-4">
+                                        <h2 className="text-4xl md:text-5xl font-syne font-black uppercase italic text-white tracking-tighter leading-tight">Solutions</h2>
+                                        <p className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-[0.4em] italic font-black">Strategic Outcome Alignment</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {(blueprint.find(c => c.type === 'SERVICES')?.items || []).map((service: any, i: number) => (
+                                            <div key={i} className="p-8 bg-white/[0.02] border border-white/5 rounded-[2.5rem] hover:border-[#00ffd1]/40 transition-all duration-700 group relative overflow-hidden flex flex-col justify-between min-h-[350px]">
+                                                <div className="space-y-6">
+                                                    <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center group-hover:bg-[#00ffd1] group-hover:text-black transition-all duration-500">
+                                                        <Zap size={20} />
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <h3 className="text-xl font-black text-white uppercase italic tracking-tight group-hover:text-[#00ffd1] transition-colors">{service.name}</h3>
+                                                        <p className="text-xs text-white/30 leading-relaxed italic line-clamp-4">
+                                                            "{service.desc}"
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#00ffd1]/40 transition-all">
-                                                    <ArrowUpRight size={14} className="text-white/20 group-hover:text-[#00ffd1]" />
+                                                <div className="pt-6 border-t border-white/5 flex items-center justify-between mt-auto">
+                                                    <div className="w-6 h-6 rounded-full border border-white/10 flex items-center justify-center group-hover:border-[#00ffd1]/40 transition-all">
+                                                        <ArrowUpRight size={12} className="text-white/20 group-hover:text-[#00ffd1]" />
+                                                    </div>
                                                 </div>
                                             </div>
+                                        ))}
+                                    </div>
+                                </div>
+    
+                                {/* FAQ SECTION */}
+                                {blueprint.find(c => c.type === 'FAQ') && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pt-12">
+                                        <div className="lg:col-span-4 space-y-4">
+                                            <h2 className="text-4xl md:text-5xl font-syne font-black uppercase italic text-white leading-tight">Common<br/>Questions</h2>
+                                            <p className="text-[9px] font-mono text-white/20 uppercase tracking-widest">Neural Knowledge Retrieval</p>
+                                        </div>
+                                        <div className="lg:col-span-8 space-y-4">
+                                            {(blueprint.find(c => c.type === 'FAQ')?.items || []).map((faq: any, i: number) => (
+                                                <div key={i} className="p-8 bg-white/[0.02] border border-white/5 rounded-[2rem] hover:bg-white/[0.04] transition-all group">
+                                                    <h4 className="text-base font-black text-white group-hover:text-[#00ffd1] mb-2 uppercase tracking-tight">{faq.q}</h4>
+                                                    <p className="text-xs text-white/30 italic leading-relaxed">{faq.a}</p>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                )}
+
+                            {/* CASE STUDIES */}
+                            {blueprint.find(c => c.type === 'CASE_STUDIES') && (
+                                <div className="space-y-16">
+                                    <div className="text-center space-y-4">
+                                        <h2 className="text-5xl font-syne font-black uppercase italic text-white">Impact Evidence</h2>
+                                        <p className="text-[10px] font-mono text-[#00ffd1] uppercase tracking-[0.4em]">Real-world Neural Success</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        {(blueprint.find(c => c.type === 'CASE_STUDIES')?.items || []).map((study: any, i: number) => (
+                                            <div key={i} className="p-12 bg-white/[0.02] border border-white/10 rounded-[3.5rem] space-y-8 group hover:bg-[#00ffd1]/5 transition-all duration-700">
+                                                <div className="flex justify-between items-start">
+                                                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{study.client}</span>
+                                                    <span className="px-4 py-1 bg-[#00ffd1]/10 text-[#00ffd1] text-[10px] font-black rounded-full border border-[#00ffd1]/20">{study.result}</span>
+                                                </div>
+                                                <p className="text-2xl font-light italic text-white/80 leading-snug">"{study.desc}"</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* PRICING TABLE */}
+                            {blueprint.find(c => c.type === 'PRICING') && (
+                                <div className="space-y-20">
+                                    <div className="text-center space-y-4">
+                                        <h2 className="text-5xl font-syne font-black uppercase italic text-white">Value Tiers</h2>
+                                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.4em]">Investment Roadmap</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                        {(blueprint.find(c => c.type === 'PRICING')?.items || []).map((tier: any, i: number) => (
+                                            <div key={i} className={`p-12 rounded-[4rem] border transition-all duration-700 flex flex-col ${tier.popular ? 'bg-[#00ffd1] border-[#00ffd1] text-black scale-105 z-10' : 'bg-white/[0.02] border-white/10 text-white'}`}>
+                                                <div className="mb-10">
+                                                    <h4 className="text-xs font-mono font-black uppercase tracking-widest mb-4 opacity-60">{tier.plan}</h4>
+                                                    <p className="text-5xl font-black italic tracking-tighter">{tier.price}</p>
+                                                </div>
+                                                <div className="space-y-4 mb-12 flex-1">
+                                                    {(tier.features || []).map((f: string, j: number) => (
+                                                        <div key={j} className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-tight">
+                                                            <CheckCircle2 size={14} className={tier.popular ? 'text-black' : 'text-[#00ffd1]'} />
+                                                            {f}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <button className={`w-full py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all ${tier.popular ? 'bg-black text-white hover:bg-black/80' : 'bg-white text-black hover:bg-[#00ffd1]'}`}>
+                                                    Select Tier
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+    
+                            {/* CONTACT SECTION */}
+                            {blueprint.find(c => c.type === 'CONTACT') && (
+                                <div className="p-12 md:p-20 bg-gradient-to-br from-[#00ffd1]/10 to-transparent border border-[#00ffd1]/20 rounded-[5rem] text-center space-y-12 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-96 h-96 bg-[#00ffd1]/5 rounded-full blur-[120px] -mr-48 -mt-48" />
+                                    <div className="space-y-4 relative z-10">
+                                        <h2 className="text-5xl md:text-6xl font-syne font-black uppercase italic text-white">Get in Touch</h2>
+                                        <p className="text-[10px] font-mono text-[#00ffd1] uppercase tracking-[0.5em]">Direct Channel Established</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative z-10">
+                                        {[
+                                            { label: 'Location', val: blueprint.find(c => c.type === 'CONTACT')?.items?.address || 'Global Neural Node' },
+                                            { label: 'Voice', val: blueprint.find(c => c.type === 'CONTACT')?.items?.phone || '+1 (AIVA) OPS-88' },
+                                            { label: 'Neural Mail', val: blueprint.find(c => c.type === 'CONTACT')?.items?.email || 'sync@aiva-os.com' }
+                                        ].map((item, i) => (
+                                            <div key={i} className="space-y-3">
+                                                <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">{item.label}</p>
+                                                <p className="text-sm text-white/70 font-medium italic">{item.val}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-
-                        {/* FAQ SECTION */}
-                        {blueprint.find(c => c.type === 'FAQ') && (
-                            <div className="max-w-3xl mx-auto space-y-12">
-                                <h2 className="text-3xl font-syne font-black uppercase italic text-center text-white">Merak Edilenler</h2>
-                                <div className="space-y-4">
-                                    {(blueprint.find(c => c.type === 'FAQ')?.items || []).map((faq: any, i: number) => (
-                                        <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-                                            <h4 className="text-sm font-black text-[#00ffd1] mb-2 uppercase">{faq.q}</h4>
-                                            <p className="text-xs text-white/40 italic">{faq.a}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* CONTACT SECTION */}
-                        {blueprint.find(c => c.type === 'CONTACT') && (
-                            <div className="p-16 bg-[#00ffd1]/5 border border-[#00ffd1]/20 rounded-[4rem] text-center space-y-8 relative overflow-hidden">
-                                <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-[#00ffd1]/10 rounded-full blur-[100px]" />
-                                <h2 className="text-4xl font-syne font-black uppercase italic text-white relative z-10">Bize Ulaşın</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Adres</p>
-                                        <p className="text-sm text-white/60">{blueprint.find(c => c.type === 'CONTACT')?.items?.address}</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Telefon</p>
-                                        <p className="text-sm text-white/60">{blueprint.find(c => c.type === 'CONTACT')?.items?.phone}</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">E-Posta</p>
-                                        <p className="text-sm text-white/60">{blueprint.find(c => c.type === 'CONTACT')?.items?.email}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>

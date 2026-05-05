@@ -387,6 +387,196 @@ export default function KnowledgePage() {
           </div>
         </div>
       </div>
+      </div>
+      
+      {/* NEW: NEURAL DISTRIBUTION MAP */}
+      <div className="mt-12 glass-panel p-10 bg-gradient-to-br from-[#00ffd1]/5 to-transparent border-[#00ffd1]/10">
+          <div className="flex items-center gap-4 mb-10">
+              <div className="p-3 bg-[#00ffd1]/10 rounded-2xl text-[#00ffd1]"><Cpu size={24} /></div>
+              <div className="space-y-1">
+                  <h3 className="text-xl font-syne font-black uppercase italic text-white tracking-tight">Neural Cluster Mapping</h3>
+                  <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.4em]">Spatial Intelligence Distribution</p>
+              </div>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="relative aspect-square max-w-[400px] mx-auto lg:mx-0">
+                  <div className="absolute inset-0 border border-white/5 rounded-full" />
+                  <div className="absolute inset-[20%] border border-white/5 rounded-full" />
+                  <div className="absolute inset-[40%] border border-white/5 rounded-full" />
+                  
+                  {/* Central Node */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-[#00ffd1] rounded-full blur-[20px] opacity-20 animate-pulse" />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-[#00ffd1] rounded-full shadow-[0_0_20px_#00ffd1]" />
+                  
+                  {/* Sector Nodes */}
+                  {stats.bySector.map((s, i) => {
+                      const angle = (i / stats.bySector.length) * Math.PI * 2;
+                      const x = 50 + Math.cos(angle) * 35;
+                      const y = 50 + Math.sin(angle) * 35;
+                      return (
+                          <motion.div 
+                            key={i}
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: i * 0.1 }}
+                            className="absolute w-2 h-2 rounded-full cursor-help group"
+                            style={{ left: `${x}%`, top: `${y}%`, backgroundColor: s.color }}
+                          >
+                              <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black border border-white/10 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                                  <p className="text-[8px] font-mono text-white/40 uppercase tracking-widest mb-1">{s.label}</p>
+                                  <p className="text-[10px] font-black text-white">{s.count} Data Points</p>
+                              </div>
+                              <div className="absolute inset-0 bg-inherit rounded-full blur-[8px] opacity-40 animate-pulse" />
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-[50px] bg-gradient-to-t from-white/10 to-transparent origin-bottom rotate-180" style={{ transform: `translate(-50%, -100%) rotate(${angle + Math.PI/2}rad)` }} />
+                          </motion.div>
+                      );
+                  })}
+              </div>
+              
+              <div className="space-y-8">
+                  <div className="space-y-4">
+                      <h4 className="text-[10px] font-mono font-black text-[#00ffd1] uppercase tracking-[0.3em]">Knowledge Integrity Report</h4>
+                      <p className="text-sm text-white/40 leading-relaxed italic">
+                          "AIVA'nın uzun süreli hafızası şu an {knowledgeBase.length} farklı vektör düğümü üzerinden çapraz sorgulama yapabiliyor. Sektörel kümeler arasındaki semantik benzerlik %84.2 oranında optimize edildi."
+                      </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
+                          <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-2">Retrieval Speed</p>
+                          <p className="text-xl font-black text-white italic">12ms</p>
+                      </div>
+                      <div className="p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
+                          <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest mb-2">Context Match</p>
+                          <p className="text-xl font-black text-[#00ffd1] italic">99.8%</p>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* NEW: SEMANTIC ORACLE & LEARNING LOOP */}
+      <div className="grid grid-cols-12 gap-8 mt-8">
+        
+        {/* SEMANTIC ORACLE */}
+        <div className="col-span-12 lg:col-span-7 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+                <BrainCircuit size={18} className="text-indigo-400" />
+                <h2 className="text-xl font-syne font-black italic uppercase tracking-tighter text-white">Semantic Oracle</h2>
+            </div>
+            
+            <div className="glass-panel p-8 bg-black/40 border-indigo-500/10">
+                <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-6 border-b border-white/5 pb-4">
+                    Cross-Module Intelligence Query
+                </p>
+                <div className="space-y-6">
+                    <div className="flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-black text-white">U</span>
+                        </div>
+                        <div className="flex-1 bg-white/5 border border-white/5 p-4 rounded-2xl rounded-tl-sm">
+                            <p className="text-sm text-white/80 font-mono">Dün Vapi üzerinden "fiyat yüksek" diyerek randevuyu reddeden hastalara bugün nasıl bir sms atmalıyız?</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0">
+                            <Zap size={12} className="text-indigo-400" />
+                        </div>
+                        <div className="flex-1 bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-2xl rounded-tl-sm space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="px-2 py-0.5 bg-black rounded text-[7px] font-mono text-[#00ffd1] border border-[#00ffd1]/20">Source: Vapi Logs</span>
+                                <span className="px-2 py-0.5 bg-black rounded text-[7px] font-mono text-indigo-400 border border-indigo-400/20">Source: Knowledge Node #42</span>
+                            </div>
+                            <p className="text-sm text-white/90 leading-relaxed italic">
+                                "Dünkü analizlerime göre fiyat itirazı yapan hastalar kalite algısında şüphe yaşıyor. Kurumsal hafızamızdaki '7 aşamalı sterilizasyon' ve 'ömür boyu garanti' argümanlarını kullanarak onlara bir güven SMS'i tasarladım:"
+                            </p>
+                            <div className="p-4 bg-black/40 rounded-xl border border-white/5">
+                                <p className="text-xs font-mono text-white/60">
+                                    "Merhaba, sağlığınız paha biçilemez. İmplant tedavilerimizde kullandığımız 7 aşamalı Alman sterilizasyon protokolü ve ömür boyu garanti sertifikamız hakkında detaylı bilgi vermek için size ücretsiz bir danışmanlık tanımladık. Tıklayın: [Link]"
+                                </p>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-2">
+                                <button className="text-[9px] font-mono text-white/40 hover:text-white uppercase tracking-widest transition-colors">Refine Tone</button>
+                                <button className="px-6 py-2 bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-400 transition-all shadow-[0_0_20px_rgba(99,102,241,0.2)]">Execute SMS Campaign</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="relative mt-4">
+                        <input 
+                            type="text" 
+                            placeholder="Ask the Oracle..." 
+                            className="w-full bg-black/60 border border-white/10 rounded-2xl pl-6 pr-16 py-4 text-sm text-white font-mono focus:border-indigo-500/50 outline-none placeholder:text-white/20 transition-all"
+                            disabled
+                        />
+                        <button className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 transition-colors cursor-not-allowed">
+                            <Send size={14} className="text-white/40" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* AUTONOMOUS LEARNING LOOP */}
+        <div className="col-span-12 lg:col-span-5 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+                <RefreshCcw size={18} className="text-[#00ffd1]" />
+                <h2 className="text-xl font-syne font-black italic uppercase tracking-tighter text-white">Autonomous Loop</h2>
+            </div>
+            
+            <div className="glass-panel p-8 bg-black/20 border-[#00ffd1]/10">
+                <p className="text-sm text-white/60 italic leading-relaxed mb-6">
+                    AIVA sadece sizin eklediğiniz verilerle kalmaz. Aktif modüllerden elde ettiği başarılı sonuçları otonom olarak yeni <span className="text-[#00ffd1] font-bold">Knowledge Vector</span>'lerine dönüştürür.
+                </p>
+
+                <div className="space-y-4 relative">
+                    {/* Connecting line */}
+                    <div className="absolute left-6 top-8 bottom-8 w-[1px] bg-gradient-to-b from-[#00ffd1]/40 via-indigo-500/40 to-transparent" />
+                    
+                    <div className="relative z-10 flex gap-4 items-start group">
+                        <div className="w-12 h-12 rounded-2xl bg-black border border-[#00ffd1]/30 flex flex-col items-center justify-center shrink-0 shadow-[0_0_15px_rgba(0,255,209,0.1)] group-hover:scale-110 transition-transform">
+                            <MessageSquare size={14} className="text-[#00ffd1] mb-1" />
+                            <span className="text-[6px] font-mono text-[#00ffd1] uppercase">Vapi</span>
+                        </div>
+                        <div className="flex-1 pt-2">
+                            <p className="text-[10px] font-mono text-[#00ffd1] uppercase tracking-widest mb-1">Trigger: Call Closed</p>
+                            <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-xs text-white/70 font-mono">
+                                "Müşteri 'acı' itirazını 'Lazer Doku Kaynağı' argümanıyla aştık. Başarı: %92"
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="relative z-10 flex gap-4 items-start group">
+                        <div className="w-12 h-12 rounded-2xl bg-black border border-indigo-500/30 flex flex-col items-center justify-center shrink-0 shadow-[0_0_15px_rgba(99,102,241,0.1)] group-hover:scale-110 transition-transform">
+                            <Cpu size={14} className="text-indigo-400 mb-1" />
+                            <span className="text-[6px] font-mono text-indigo-400 uppercase">Process</span>
+                        </div>
+                        <div className="flex-1 pt-2">
+                            <p className="text-[10px] font-mono text-indigo-400 uppercase tracking-widest mb-1">Auto-Vectoring</p>
+                            <div className="flex items-center gap-2 p-2 bg-indigo-500/5 rounded-lg border border-indigo-500/10 text-[9px] text-indigo-200">
+                                <Loader2 size={10} className="animate-spin" /> Synthesizing new defense matrix rule...
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="relative z-10 flex gap-4 items-start group">
+                        <div className="w-12 h-12 rounded-2xl bg-[#00ffd1] text-black flex flex-col items-center justify-center shrink-0 shadow-[0_0_20px_rgba(0,255,209,0.4)] group-hover:scale-110 transition-transform">
+                            <Database size={16} className="mb-1" />
+                            <span className="text-[7px] font-mono font-black uppercase">Saved</span>
+                        </div>
+                        <div className="flex-1 pt-2">
+                            <p className="text-[10px] font-mono text-[#00ffd1] uppercase tracking-widest mb-1 font-black">Memory Expanded</p>
+                            <div className="p-3 bg-[#00ffd1]/10 rounded-xl border border-[#00ffd1]/20 text-[10px] text-white/90 italic">
+                                "Lazer Doku Kaynağı" argümanı artık tüm modüller tarafından kullanılabilir.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
     </div>
   );
 }
+

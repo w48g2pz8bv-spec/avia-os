@@ -71,6 +71,15 @@ const SECTORS: Sector[] = [
     services: ['Restorative Care', 'Diagnostic Imaging', 'Surgical Planning']
   },
   {
+    id: 'law',
+    label: 'Law Firm',
+    accent: '#e11d48',
+    hero: 'Authority Shield Legal',
+    sub: 'Strategic litigation and compliance management for high-stakes cases.',
+    cta: 'Case Assessment',
+    services: ['Risk Mitigation', 'Contract Intelligence', 'Policy Audit']
+  },
+  {
     id: 'saas',
     label: 'SaaS Startup',
     accent: '#6366f1',
@@ -93,8 +102,16 @@ const SECTORS: Sector[] = [
 export function AppProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [selectedSector, setSelectedSector] = useState<Sector>(SECTORS[0]);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeEntry[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([
+    { id: '1', text: "Neural Link Established: Deep Learning Engine v4.2 Active", type: 'system', time: 'Just Now' },
+    { id: '2', text: "Market Node Scanned: 124 New High-Intent Signals Identified", type: 'sync', time: '2m ago' },
+    { id: '3', text: "Security Protocol: Brand Shield Monitoring Social Sentiment", type: 'system', time: '5m ago' }
+  ]);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeEntry[]>([
+    { id: 'k1', content: "Klinik protokolü: Tüm implant operasyonları öncesi 3D panoramik film zorunludur.", sector: 'Dental Clinic', tags: ['medical', 'hygiene'], source: 'manual', created_at: new Date().toISOString() },
+    { id: 'k2', content: "Hukuki Danışmanlık: KVKK uyum süreçlerinde veri sorumlusu envanteri 15 iş günü içinde tamamlanmalıdır.", sector: 'Law Firm', tags: ['legal', 'compliance'], source: 'document', created_at: new Date().toISOString() },
+    { id: 'k3', content: "SaaS Model: SLA süremiz kritik hatalar için 4 saattir.", sector: 'SaaS Startup', tags: ['pricing', 'sla'], source: 'website', created_at: new Date().toISOString() }
+  ]);
   const [deploymentQueue, setDeploymentQueue] = useState<string[]>([]);
   const [isDbConnected, setIsDbConnected] = useState(false);
   const [efficiencyStats, setEfficiencyStats] = useState<EfficiencyStats>({

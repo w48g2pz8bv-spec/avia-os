@@ -120,6 +120,50 @@ export const NICHE_PROFILES: Record<string, NicheProfile> = {
     proofStyle:       "Ekran görüntüsü vari veriler ('%340 artış, 14 günde'), kendi deneyi, platform açıklamaları.",
   },
 
+  medical: {
+    niche:            "medical",
+    label:            "Tıp & Estetik",
+    researchFocus:    "FDA onaylı veriler, hasta başarı hikayeleri, yaygın tıbbi mitlerin çürütülmesi, işlem sonrası yaşam kalitesi",
+    tone:             "Otoriter ama empatik. Güven verici, klinik hassasiyette ama sıcak. 'Kendini emin ellerde hisset.'",
+    primaryMechanism: "OTORITE_KANITI",
+    audienceInsight:  "Sağlık ve güzellik odaklı, güven arayan (25–55). Yan etki korkusu yüksek, somut kanıt ve Dr. markası ister.",
+    bestFormats:      ["story", "data", "listicle"],
+    proofStyle:       "Klinik veriler, Dr. yorumları, önce/sonra vaka analizleri, sertifikalar.",
+  },
+
+  legal: {
+    niche:            "legal",
+    label:            "Hukuk & Danışmanlık",
+    researchFocus:    "Emsal kararlar, hukuki boşlukların riskleri, süreçlerin şeffaf dökümü, koruma kalkanı stratejileri",
+    tone:             "Ciddi, koruyucu ve keskin. 'Hakkını koruyoruz.' Karmaşık terimleri basitleştir ama ciddiyeti bozma.",
+    primaryMechanism: "RISK_KORUMA",
+    audienceInsight:  "Hukuki sorun yaşayan veya korunmak isteyen birey/işletme (30–60). Belirsizlikten nefret eder, netlik ister.",
+    bestFormats:      ["listicle", "data", "story"],
+    proofStyle:       "Yasa maddeleri, emsal vaka sonuçları, başarı yüzdeleri.",
+  },
+
+  realestate: {
+    niche:            "realestate",
+    label:            "Gayrimenkul & Yatırım",
+    researchFocus:    "Bölgesel değer artış projeksiyonları, yaşam kalitesi metrikleri, gizli yatırım fırsatları, mimari detaylar",
+    tone:             "Vizyoner ve prestijli. 'Geleceği satın alıyorsun.' Lüks ve konfor hissi uyandıran kelimeler.",
+    primaryMechanism: "SOSYAL_STATU",
+    audienceInsight:  "Yatırımcı veya lüks konut arayan (30–55). Prestij ve uzun vadeli değer artışı ana motivasyondur.",
+    bestFormats:      ["story", "data", "listicle"],
+    proofStyle:       "Değer artış grafikleri, kira getirisi verileri, mimari ödüller.",
+  },
+
+  enterprise_saas: {
+    niche:            "enterprise_saas",
+    label:            "Kurumsal SaaS & Verimlilik",
+    researchFocus:    "İş akışı otomasyon verileri, veri güvenliği standartları, ROI (Yatırım Getirisi) modelleri, ekip verimliliği",
+    tone:             "İnovatif ve sonuç odaklı. 'Geleceğin iş yapış biçimi.' Veriye dayalı iddialar.",
+    primaryMechanism: "VERIMLILIK_CARPANI",
+    audienceInsight:  "CTO, CEO, operasyon yöneticisi (25–50). Manuel hatadan nefret eder, tam otonomi ve veri ister.",
+    bestFormats:      ["data", "listicle", "challenge"],
+    proofStyle:       "Verimlilik metrikleri (%... artış), entegrasyon listeleri, siber güvenlik sertifikaları.",
+  },
+
   general: {
     niche:            "general",
     label:            "Genel",
@@ -144,6 +188,10 @@ const NICHE_SIGNALS: { niche: string; patterns: RegExp[] }[] = [
   { niche: "culture",    patterns: [/film|dizi|müzik|sanat|pop kültür|celebrity|viral|trend|netflix|spotify|oyun|esports|anime|manga|moda|sosyal medya fenomeni/i] },
   { niche: "education",  patterns: [/eğitim|okul|üniversite|sınav|öğrenci|ders|öğrenme|diploma|burs|yks|lgs|akademi|ödev|müfredat/i] },
   { niche: "creator",    patterns: [/youtube|tiktok|instagram|reels|shorts|algoritma|izlenme|abone|takipçi|içerik üretici|creator|video çek|kanal büyüt|hook|thumbnail/i] },
+  { niche: "medical",    patterns: [/tıp|doktor|estetik|klinik|hastane|ameliyat|sağlık merkezi|diş|cerrah|botoks|dolgu|tedavi|hasta/i] },
+  { niche: "legal",      patterns: [/hukuk|avukat|dava|mahkeme|sözleşme|legal|danışmanlık|hukuki|noter|tazminat|icra/i] },
+  { niche: "realestate", patterns: [/gayrimenkul|emlak|konut|daire|villa|arsa|yatırım|proje|inşaat|rezidans|satılık|kiralık/i] },
+  { niche: "enterprise_saas", patterns: [/saas|yazılım|crm|erp|b2b|kurumsal|bulut|otomasyon|dashboard|analitik|ölçeklenebilir|roi/i] },
 ];
 
 export function detectNicheProfile(topic: string): NicheProfile {

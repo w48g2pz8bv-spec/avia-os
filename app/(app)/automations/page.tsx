@@ -55,50 +55,51 @@ export default function AutomationsPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([
     { 
         title: "Omni-Channel Lead Acquisition", 
-        trigger: "New Website Lead", 
+        trigger: "Goal: Maximize Inbound Conversion", 
         logic: [
-            { type: "Condition", label: "Sector == 'Dental'", next: "Vapi Voice Call" },
-            { type: "Action", label: "Neural NLP Qualify", next: "CRM Sync" },
-            { type: "Logic", label: "If Score > 0.8", next: "Priority Alert" }
+            { type: "Condition", label: "Intent == 'High' / Sector == 'Dental'", next: "Deploy Vapi Agent" },
+            { type: "Action", label: "Neural Voice Qualification", next: "Knowledge Base Sync" },
+            { type: "Logic", label: "Self-Healing: A/B Test Objection Handling", next: "CRM Push" }
         ],
-        stats: { exec: "1.2s", success: "98.2%", runs: "1,242" },
+        stats: { exec: "12ms", success: "94.2%", runs: "1,242" },
         status: "Active",
         category: "Growth"
     },
     { 
-        title: "Reputation Sentiment Filter", 
-        trigger: "Google/Yelp Review", 
+        title: "Reputation Crisis Shield", 
+        trigger: "Goal: Neutralize 1-Star Threats < 15m", 
         logic: [
-            { type: "Condition", label: "Sentiment == 'Negative'", next: "Human Escalation" },
-            { type: "Action", label: "Auto-Draft AI Reply", next: "Approval Queue" }
+            { type: "Condition", label: "Sentiment Velocity Drop Detected", next: "Auto-Draft AI Defense" },
+            { type: "Logic", label: "Cross-Reference KB Protocol", next: "Execute Vapi Apology Call" },
+            { type: "Action", label: "Send 30% Retention Offer (SMS)", next: "Monitor Click" }
         ],
-        stats: { exec: "840ms", success: "99.1%", runs: "452" },
+        stats: { exec: "8ms", success: "99.1%", runs: "452" },
         status: "Active",
         category: "Reputation"
     },
     { 
         title: "Appointment No-Show Recovery", 
-        trigger: "CRM: Missed Appointment", 
+        trigger: "Goal: Re-book 50% No-Shows in 24h", 
         logic: [
-            { type: "Condition", label: "No-Show Detected", next: "Wait 30min" },
-            { type: "Action", label: "Vapi Re-Schedule Call", next: "CRM Update" },
-            { type: "Logic", label: "If Rescheduled → Yes", next: "Confirmation SMS" }
+            { type: "Condition", label: "No-Show Detected (CRM)", next: "Wait 15m" },
+            { type: "Action", label: "Vapi: Empathy Check Call", next: "Analyze Transcript" },
+            { type: "Logic", label: "If Excused -> Reschedule & Update Builder UI", next: "Success" }
         ],
-        stats: { exec: "2.1s", success: "76.4%", runs: "89" },
+        stats: { exec: "21ms", success: "76.4%", runs: "89" },
         status: "Active",
         category: "Retention"
     },
     { 
-        title: "5-Star Referral Engine", 
-        trigger: "Review Rating ≥ 5", 
+        title: "Competitor Lead Hijacking", 
+        trigger: "Goal: Steal Market Share locally", 
         logic: [
-            { type: "Condition", label: "Rating == 5 Stars", next: "Referral Gate" },
-            { type: "Action", label: "WhatsApp: Ask Referral", next: "Track Link" },
-            { type: "Logic", label: "If Referred → Reward", next: "Loyalty Queue" }
+            { type: "Action", label: "Scrape 1-Star Google Reviews (5km)", next: "Filter High Intent" },
+            { type: "Condition", label: "Intent == 'Looking for Alternative'", next: "Generate Custom Offer" },
+            { type: "Logic", label: "Dispatch Targeted Insta-Ad", next: "Capture Lead" }
         ],
-        stats: { exec: "0.9s", success: "41.2%", runs: "204" },
+        stats: { exec: "42ms", success: "18.2%", runs: "204" },
         status: "Active",
-        category: "Growth"
+        category: "Aggressive Growth"
     }
   ]);
 
@@ -226,26 +227,36 @@ export default function AutomationsPage() {
                     </div>
 
                     <div className="space-y-4">
-                        <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Primary Trigger (Event)</label>
-                        <select className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-sm text-white/60 outline-none focus:border-[#00ffd1]/40 appearance-none">
-                            <option>New Website Lead</option>
-                            <option>Negative Review Received</option>
-                            <option>Appointment Missed</option>
-                            <option>Form Submission</option>
+                        <label className="text-[10px] font-mono text-[#00ffd1] uppercase tracking-widest flex justify-between">
+                            <span>Primary Neural Objective</span>
+                            <span className="text-white/20">Non-Linear</span>
+                        </label>
+                        <select className="w-full bg-[#00ffd1]/5 border border-[#00ffd1]/20 rounded-2xl p-5 text-sm text-[#00ffd1] outline-none focus:border-[#00ffd1]/40 appearance-none font-bold italic">
+                            <option>Goal: Maximize Inbound Conversion</option>
+                            <option>Goal: Neutralize 1-Star Threats</option>
+                            <option>Goal: Recover No-Shows < 24h</option>
+                            <option>Goal: Steal Market Share</option>
                         </select>
+                        <p className="text-[9px] font-mono text-white/40 uppercase tracking-widest italic mt-2">
+                            *AIVA will autonomously select the best tools (Vapi, Builder, Rep) to achieve this goal.
+                        </p>
                     </div>
 
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
-                            <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Neural Logic Steps</label>
-                            <button className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest hover:underline">+ Add Step</button>
+                            <label className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Permitted AI Actions</label>
+                            <button className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest hover:underline">+ Grant Permission</button>
                         </div>
                         <div className="space-y-3">
-                            {['Sentiment Check', 'Vapi Voice Qualification', 'CRM Record Create'].map((step, i) => (
-                                <div key={i} className="flex items-center gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-white/20 transition-all">
-                                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-mono text-white/20">{i+1}</div>
-                                    <span className="flex-1 text-xs font-black text-white/60 uppercase">{step}</span>
-                                    <Settings2 size={14} className="text-white/10 group-hover:text-[#00ffd1] transition-colors cursor-pointer" />
+                            {['Voice Agent (Vapi)', 'Website Mutation (Builder)', 'SMS / Email (Omni)'].map((step, i) => (
+                                <div key={i} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-[#00ffd1]/30 transition-all cursor-pointer">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-mono ${i===0 ? 'bg-indigo-500/20 text-indigo-400' : i===1 ? 'bg-[#00ffd1]/20 text-[#00ffd1]' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                            {i===0 ? <MessageCircle size={14} /> : i===1 ? <Globe size={14} /> : <Zap size={14} />}
+                                        </div>
+                                        <span className="text-xs font-black text-white/80 uppercase">{step}</span>
+                                    </div>
+                                    <div className="w-3 h-3 rounded-full bg-[#00ffd1] shadow-[0_0_10px_#00ffd1]" />
                                 </div>
                             ))}
                         </div>
@@ -254,12 +265,12 @@ export default function AutomationsPage() {
                     <div className="pt-10 border-t border-white/5">
                         <button 
                             onClick={async () => {
-                                toast("Neural Workflow Compiled", "success");
+                                toast("Neural Workflow Deployed to Workforce", "success");
                                 setIsEditorOpen(false);
                             }}
-                            className="w-full py-5 bg-white text-black rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-[#00ffd1] transition-all shadow-[0_0_40px_rgba(255,255,255,0.1)]"
+                            className="w-full py-5 bg-[#00ffd1] text-black rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:scale-[1.02] transition-all shadow-[0_0_40px_rgba(0,255,209,0.3)]"
                         >
-                            Deploy to Workforce
+                            Deploy Objective
                         </button>
                     </div>
                 </div>
@@ -284,16 +295,16 @@ export default function AutomationsPage() {
                     <div className="p-3 bg-white/5 rounded-xl text-white/20"><GitBranch size={16} /></div>
                     <div className="space-y-1">
                         <h3 className="text-lg font-syne font-black uppercase italic text-white">{flow.title}</h3>
-                        <p className="text-[9px] font-mono text-white/20 uppercase tracking-widest italic">Trigger: {flow.trigger}</p>
+                        <p className="text-[9px] font-mono text-[#00ffd1] uppercase tracking-widest italic">{flow.trigger}</p>
                     </div>
                   </div>
                   <div className={`h-2 w-2 rounded-full ${flow.status === 'Active' ? 'bg-[#00ffd1] animate-pulse shadow-[0_0_10px_#00ffd1]' : 'bg-white/10'}`} />
                 </div>
 
                 <div className="grid grid-cols-3 gap-6 pt-6 border-t border-white/5">
-                    <div><p className="text-[8px] font-mono text-white/10 uppercase mb-1">Success</p><p className="text-xs font-black text-white">{flow.stats.success}</p></div>
-                    <div><p className="text-[8px] font-mono text-white/10 uppercase mb-1">Avg Latency</p><p className="text-xs font-black text-[#00ffd1]">{flow.stats.exec}</p></div>
-                    <div><p className="text-[8px] font-mono text-white/10 uppercase mb-1">Daily Runs</p><p className="text-xs font-black text-white">{flow.stats.runs}</p></div>
+                    <div><p className="text-[8px] font-mono text-white/10 uppercase mb-1">Goal Success</p><p className="text-xs font-black text-white">{flow.stats.success}</p></div>
+                    <div><p className="text-[8px] font-mono text-white/10 uppercase mb-1">Compute Latency</p><p className="text-xs font-black text-[#00ffd1]">{flow.stats.exec}</p></div>
+                    <div><p className="text-[8px] font-mono text-white/10 uppercase mb-1">Daily Executions</p><p className="text-xs font-black text-white">{flow.stats.runs}</p></div>
                 </div>
               </div>
             ))}
@@ -301,17 +312,17 @@ export default function AutomationsPage() {
 
           {/* SIMULATION TERMINAL */}
           <div className="glass-panel p-6 bg-black/60 font-mono space-y-4">
-            <div className="flex items-center gap-2 text-white/20 border-b border-white/5 pb-4">
+            <div className="flex items-center gap-2 text-[#00ffd1]/40 border-b border-white/5 pb-4">
                 <Terminal size={12} />
-                <span className="text-[9px] font-black uppercase tracking-[0.2em] italic">Execution_Logs_v2.4</span>
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] italic">Omni-Channel Execution_Logs</span>
             </div>
             <div className="space-y-2 min-h-[120px]">
                 {simulationLogs.length === 0 ? (
-                    <p className="text-[10px] text-white/5 italic italic uppercase">Awaiting flow trigger...</p>
+                    <p className="text-[10px] text-white/5 italic italic uppercase">Awaiting neural trigger...</p>
                 ) : (
                     simulationLogs.map((log, i) => (
-                        <p key={i} className="text-[10px] text-white/40 animate-in slide-in-from-left-2 duration-300">
-                            <span className="text-[#00ffd1]">▶</span> {log}
+                        <p key={i} className="text-[10px] text-white/60 animate-in slide-in-from-left-2 duration-300">
+                            <span className="text-[#00ffd1]">[{i}]</span> {log}
                         </p>
                     ))
                 )}
@@ -325,9 +336,15 @@ export default function AutomationsPage() {
                 <div className="absolute top-0 right-0 p-12 opacity-[0.02] -rotate-12"><Cpu size={300} /></div>
                 
                 <div className="border-b border-white/5 pb-8 mb-12 relative z-10">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="p-2 bg-[#00ffd1]/10 rounded-lg text-[#00ffd1]"><Activity size={14} /></div>
-                        <span className="text-[10px] font-mono font-black text-white/20 uppercase tracking-[0.4em] italic">Visual_Logic_Engine</span>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 bg-[#00ffd1]/10 rounded-lg text-[#00ffd1]"><Activity size={14} /></div>
+                            <span className="text-[10px] font-mono font-black text-white/20 uppercase tracking-[0.4em] italic">Autonomous Orchestrator</span>
+                        </div>
+                        <div className="px-3 py-1 border border-indigo-500/30 bg-indigo-500/10 rounded-full flex items-center gap-2">
+                            <Sparkles size={10} className="text-indigo-400" />
+                            <span className="text-[8px] font-mono font-black text-indigo-400 uppercase tracking-widest">Self-Optimizing Live</span>
+                        </div>
                     </div>
                     <h4 className="text-2xl font-syne font-black uppercase italic text-white tracking-tight">{selectedFlowTitle}</h4>
                 </div>
@@ -345,22 +362,34 @@ export default function AutomationsPage() {
                             <div className={`flex items-center gap-8 group transition-all duration-500 ${
                                 activeNodeIndex === i ? 'scale-110' : ''
                             }`}>
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-500 ${
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all duration-500 relative ${
                                     activeNodeIndex === i ? 'bg-[#00ffd1] border-[#00ffd1] text-black shadow-[0_0_30px_rgba(0,255,209,0.3)]' :
+                                    node.label.includes('Self-Healing') ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-400' :
                                     node.type === 'Condition' ? 'border-amber-500/20 bg-amber-500/5 text-amber-500' :
                                     node.type === 'Action' ? 'border-[#00ffd1]/10 bg-[#00ffd1]/5 text-[#00ffd1]' :
                                     'border-blue-500/20 bg-blue-500/5 text-blue-500'
                                 }`}>
+                                    {node.label.includes('Self-Healing') && (
+                                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-indigo-500 rounded-full animate-ping opacity-50" />
+                                    )}
                                     {node.type === 'Condition' ? <Split size={20} /> : 
                                      node.type === 'Action' ? <Zap size={20} /> : <GitBranch size={20} />}
                                 </div>
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-black uppercase text-white tracking-widest">{node.label}</span>
-                                        {activeNodeIndex === i && <Loader2 size={10} className="text-[#00ffd1] animate-spin" />}
-                                        {activeNodeIndex !== null && activeNodeIndex > i && <CheckCircle2 size={10} className="text-emerald-500" />}
+                                <div className="space-y-2 flex-1">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${node.label.includes('Self-Healing') ? 'text-indigo-400' : 'text-white'}`}>{node.label}</span>
+                                            {activeNodeIndex === i && <Loader2 size={10} className="text-[#00ffd1] animate-spin" />}
+                                            {activeNodeIndex !== null && activeNodeIndex > i && <CheckCircle2 size={10} className="text-emerald-500" />}
+                                        </div>
                                     </div>
-                                    <p className="text-[9px] font-mono text-white/20 uppercase tracking-tighter italic">Route: {node.next}</p>
+                                    
+                                    <div className="flex items-center gap-4">
+                                        <p className="text-[9px] font-mono text-white/20 uppercase tracking-tighter italic">Route: {node.next}</p>
+                                        {node.label.includes('Self-Healing') && (
+                                            <span className="text-[8px] font-mono bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded uppercase">Autonomous A/B Shift</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -368,7 +397,7 @@ export default function AutomationsPage() {
                     
                     <div className="pt-8 flex flex-col items-center justify-center opacity-10">
                         <AlertCircle size={24} className="mb-4" />
-                        <p className="text-[9px] font-mono uppercase tracking-[0.4em]">End of Logic Stream</p>
+                        <p className="text-[9px] font-mono uppercase tracking-[0.4em]">Objective Met // Stream Terminated</p>
                     </div>
                 </div>
 

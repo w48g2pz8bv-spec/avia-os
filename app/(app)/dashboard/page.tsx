@@ -26,7 +26,8 @@ import {
   Brain,
   AlertCircle,
   Box,
-  ChevronRight
+  ChevronRight,
+  Terminal
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -144,33 +145,47 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="glass-panel p-10 mb-8 relative overflow-hidden bg-black/40">
-        <div className="absolute inset-0 bg-[radial-gradient(#00ffd105_1px,transparent_1px)] [background-size:20px_20px] opacity-20" />
-        <div className="flex items-center justify-between relative z-10">
-          {pipelineNodes.map((node, i) => (
-            <div key={node.id} className="flex items-center flex-1">
-              <div className="flex flex-col items-center gap-4 group">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border-2 transition-all duration-1000 ${
-                  pulseIndex === i ? 'bg-[#00ffd1] border-[#00ffd1] text-black shadow-[0_0_40px_rgba(0,255,209,0.4)] scale-110' : 'bg-white/5 border-white/10 text-white/20'
-                }`}>
-                  <node.icon size={28} />
-                </div>
-                <div className="text-center">
-                  <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${pulseIndex === i ? 'text-[#00ffd1]' : 'text-white/40'}`}>{node.label}</p>
-                  <p className="text-[8px] font-mono text-white/20 uppercase italic">{node.detail}</p>
-                </div>
-              </div>
-              {i < pipelineNodes.length - 1 && (
-                <div className="flex-1 flex justify-center px-4">
-                   <div className="h-px w-full bg-white/5 relative">
-                      <div className={`absolute top-0 h-px bg-gradient-to-r from-transparent via-[#00ffd1] to-transparent transition-all duration-[3000ms] ${
-                        pulseIndex === i ? 'w-full opacity-100' : 'w-0 opacity-0'
-                      }`} />
-                   </div>
-                </div>
-              )}
+      {/* OMNI-COMMAND LINE (NATURAL LANGUAGE TERMINAL) */}
+      <div className="glass-panel p-8 mb-8 relative overflow-hidden bg-black/60 border border-[#00ffd1]/20">
+         <div className="absolute inset-0 bg-[radial-gradient(#00ffd110_1px,transparent_1px)] [background-size:20px_20px] opacity-20" />
+         <div className="relative z-10 flex flex-col gap-4">
+             <div className="flex items-center gap-3 mb-2">
+                 <Terminal size={18} className="text-[#00ffd1]" />
+                 <h2 className="text-[10px] font-mono font-black text-[#00ffd1] uppercase tracking-[0.4em] italic">Omni-Command // God Mode</h2>
+             </div>
+             <div className="relative">
+                 <input 
+                    type="text"
+                    placeholder="E.g., 'Launch a weekend dental implant campaign. Update Builder, set Vapi budget to $500, and pause reputation alerts.'"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-6 pl-6 pr-40 text-sm font-mono text-white placeholder:text-white/20 outline-none focus:border-[#00ffd1]/40 focus:bg-[#00ffd1]/5 transition-all shadow-inner"
+                 />
+                 <button className="absolute right-3 top-3 bottom-3 bg-[#00ffd1] text-black px-8 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-transform flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,209,0.3)]">
+                     <Sparkles size={14} /> Execute
+                 </button>
+             </div>
+         </div>
+      </div>
+
+      {/* THE LIVE AUTONOMY STREAM (CROSS-MODULE MATRIX) */}
+      <div className="glass-panel p-6 mb-8 bg-black/80 font-mono relative overflow-hidden border-l-4 border-[#00ffd1]">
+        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+                <Activity size={16} className="text-[#00ffd1]" />
+                <span className="text-[10px] text-white/40 uppercase tracking-widest">Live Autonomy Stream</span>
             </div>
-          ))}
+            <div className="flex items-center gap-2 text-[8px] text-[#00ffd1] uppercase animate-pulse">
+                <div className="w-1.5 h-1.5 bg-[#00ffd1] rounded-full" /> Synchronizing 4 Modules
+            </div>
+        </div>
+        <div className="h-24 overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 z-10" />
+            <div className="space-y-2 animate-slide-up">
+                <p className="text-[10px] text-white/60"><span className="text-indigo-400">[VAPI]</span> Analyzing Call #4812... User objected to pricing.</p>
+                <p className="text-[10px] text-white/60"><span className="text-emerald-400">[KNOWLEDGE_BASE]</span> Generating new 'Financing Options' objection handler.</p>
+                <p className="text-[10px] text-[#00ffd1] font-bold"><span className="text-amber-400">[BUILDER]</span> Autonomously injected 10% Discount Banner to Homepage.</p>
+                <p className="text-[10px] text-white/60"><span className="text-red-400">[AUTOMATIONS]</span> Pushed lead to 'High-Ticket Nurture' workflow.</p>
+                <p className="text-[10px] text-white/60"><span className="text-indigo-400">[VAPI]</span> Dialing next lead in queue (Confidence: 84%)...</p>
+            </div>
         </div>
       </div>
 

@@ -18,7 +18,9 @@ import {
   Workflow,
   Sparkles,
   GitBranch,
-  Globe
+  Globe,
+  AlertCircle,
+  MessageCircle
 } from "lucide-react";
 import dynamic from 'next/dynamic';
 const TrafficChart = dynamic(() => import('@/components/dashboard/analytics-charts').then(mod => mod.TrafficChart), { ssr: false });
@@ -190,46 +192,70 @@ export default function IntelligencePage() {
       <div className="grid grid-cols-12 gap-8">
         <section className="col-span-12 lg:col-span-8 space-y-8">
           
-          {/* SECTOR-SPECIFIC KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {sectorKPIs.map((kpi, i) => (
-              <motion.div
-                key={kpi.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="glass-panel p-6 space-y-3 group hover:border-[#00ffd1]/20 transition-all"
-              >
-                <p className="text-[8px] font-mono text-white/20 uppercase tracking-widest">{kpi.label}</p>
-                <p className={`text-2xl font-black italic tracking-tighter ${kpi.color}`}>{kpi.val}</p>
-                <div className="flex items-center gap-2">
-                  <TrendingUp size={10} className="text-emerald-500" />
-                  <span className="text-[8px] font-mono text-emerald-500">{kpi.delta} vs last month</span>
-                </div>
-              </motion.div>
-            ))}
+          {/* NEURAL PROFIT LEAKS (PRESCRIPTIVE ANALYTICS) */}
+          <div className="glass-panel p-8 space-y-6 bg-red-500/5 border-red-500/10">
+              <div className="flex items-center gap-3">
+                  <AlertCircle size={18} className="text-red-400" />
+                  <h3 className="text-[10px] font-mono font-black text-red-400 tracking-[0.3em] uppercase italic">Neural Profit Leaks Detected</h3>
+                  <span className="px-2 py-0.5 ml-auto bg-red-500/20 text-red-400 text-[8px] font-mono uppercase rounded animate-pulse">Critical: 2</span>
+              </div>
+              
+              <div className="space-y-4">
+                  <div className="p-5 bg-black/60 border border-red-500/20 rounded-2xl flex items-center justify-between group hover:border-red-500/40 transition-colors">
+                      <div className="flex items-start gap-4">
+                          <div className="p-2 bg-red-500/10 rounded-lg text-red-400"><Workflow size={16} /></div>
+                          <div className="space-y-1">
+                              <p className="text-sm font-black text-white italic uppercase tracking-tight">Builder Form Friction</p>
+                              <p className="text-[10px] text-white/60 leading-relaxed font-mono max-w-lg">
+                                  "Traffic drops by <span className="text-red-400 font-bold">14.2%</span> on the Contact Form. Action: Replace static form with Vapi Voice Agent widget."
+                              </p>
+                          </div>
+                      </div>
+                      <button className="px-6 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-black transition-all">
+                          Auto-Patch Leak
+                      </button>
+                  </div>
+
+                  <div className="p-5 bg-black/60 border border-amber-500/20 rounded-2xl flex items-center justify-between group hover:border-amber-500/40 transition-colors">
+                      <div className="flex items-start gap-4">
+                          <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500"><MessageCircle size={16} /></div>
+                          <div className="space-y-1">
+                              <p className="text-sm font-black text-white italic uppercase tracking-tight">Vapi Pricing Objection</p>
+                              <p className="text-[10px] text-white/60 leading-relaxed font-mono max-w-lg">
+                                  "<span className="text-amber-500 font-bold">7%</span> of calls hang up after pricing is stated. Action: Inject 'Financing Options' node into Knowledge Base."
+                              </p>
+                          </div>
+                      </div>
+                      <button className="px-6 py-2 bg-amber-500/10 text-amber-500 border border-amber-500/30 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-amber-500 hover:text-black transition-all">
+                          Inject to Memory
+                      </button>
+                  </div>
+              </div>
           </div>
 
-          {/* MAIN CHART */}
+          {/* MAIN CHART - PREDICTIVE CHURN RADAR */}
           <div className="glass-panel p-8 space-y-8 group relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-[0.02]">
                 <Activity size={200} strokeWidth={0.5} />
             </div>
             <div className="flex justify-between items-center relative z-10">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-[#00ffd1]/10 rounded-lg"><TrendingUp size={16} className="text-[#00ffd1]" /></div>
-                <p className="text-[10px] font-mono font-black text-white/60 tracking-[0.4em] uppercase italic">
-                  Neural_Predictive_Growth // {scenario}
-                </p>
+                <div className="p-2 bg-indigo-500/10 rounded-lg"><Target size={16} className="text-indigo-400" /></div>
+                <div className="space-y-1">
+                    <p className="text-[10px] font-mono font-black text-white/60 tracking-[0.4em] uppercase italic">
+                      Predictive Churn Radar
+                    </p>
+                    <p className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Forecasting Next 14 Days</p>
+                </div>
               </div>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-[#00ffd1]" />
-                    <span className="text-[9px] font-mono text-white/40 uppercase">Actual</span>
+                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+                    <span className="text-[9px] font-mono text-white/40 uppercase">At-Risk Accounts</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-white/20 border border-white/40" />
-                    <span className="text-[9px] font-mono text-white/20 uppercase italic">Projection</span>
+                    <div className="h-1.5 w-1.5 rounded-full bg-[#00ffd1] shadow-[0_0_10px_#00ffd1] animate-pulse" />
+                    <span className="text-[9px] font-mono text-[#00ffd1] uppercase italic font-bold">AIVA Interventions</span>
                 </div>
               </div>
             </div>
@@ -240,66 +266,58 @@ export default function IntelligencePage() {
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="flex items-center gap-4 bg-black/60 backdrop-blur-xl border border-white/10 px-8 py-4 rounded-3xl">
                             <Loader2 size={20} className="text-[#00ffd1] animate-spin" />
-                            <span className="text-xs font-mono font-black text-white uppercase tracking-widest">Re-Indexing Scenario Data...</span>
+                            <span className="text-xs font-mono font-black text-white uppercase tracking-widest">Simulating Future Scenarios...</span>
                         </div>
                     </div>
                 )}
             </div>
           </div>
 
-          {/* BOTTOM GRID: OPPORTUNITY MATRIX + RESOURCES */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="glass-panel p-8 space-y-6">
-                <div className="flex items-center gap-3">
-                    <Target size={16} className="text-[#00ffd1]" />
-                    <h3 className="text-[10px] font-mono font-black text-white/20 tracking-[0.3em] uppercase italic">Opportunity Matrix</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    {[
-                        { label: 'SEO Density', val: scenario === 'Aggressive' ? 'ULTRA' : 'High', color: 'text-[#00ffd1]' },
-                        { label: 'Lead Velocity', val: scenario === 'Aggressive' ? '+48%' : '+24%', color: 'text-[#00ffd1]' },
-                        { label: 'Conv. Leak', val: 'Zeroed', color: 'text-emerald-500' },
-                        { label: 'UX Friction', val: 'Minimal', color: 'text-blue-400' }
-                    ].map((m) => (
-                        <div key={m.label} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl hover:border-[#00ffd1]/20 transition-all">
-                            <p className="text-[8px] font-mono text-white/20 uppercase mb-1 tracking-widest">{m.label}</p>
-                            <p className={`text-sm font-black uppercase italic ${m.color}`}>{m.val}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
+          {/* BOTTOM GRID: AUTONOMOUS RESOURCE ORCHESTRATOR */}
+          <div className="glass-panel p-8 space-y-6">
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-3">
+                      <Cpu size={16} className="text-[#00ffd1]" />
+                      <h3 className="text-[10px] font-mono font-black text-white/20 tracking-[0.3em] uppercase italic">Autonomous Budget Orchestrator</h3>
+                  </div>
+                  <span className="text-[8px] font-mono text-[#00ffd1] uppercase tracking-widest bg-[#00ffd1]/10 px-2 py-1 rounded">AI Live Rebalancing</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="p-5 bg-black/40 border border-white/5 rounded-2xl">
+                      <p className="text-[8px] font-mono text-white/30 uppercase tracking-widest mb-4">Ad Spend (Builder)</p>
+                      <div className="flex items-end justify-between">
+                          <p className="text-xl font-black text-white italic">₺14K</p>
+                          <div className="flex items-center gap-1 text-red-400 text-[10px] font-mono">
+                              <TrendingUp size={12} className="rotate-180" /> -22%
+                          </div>
+                      </div>
+                      <p className="text-[8px] font-mono text-white/20 mt-3 h-8">"Cost per lead too high. Funds diverted."</p>
+                  </div>
 
-            <div className="glass-panel p-8 space-y-6 bg-black/40">
-                <div className="flex items-center gap-3">
-                    <HardDrive size={16} className="text-[#00ffd1]" />
-                    <h3 className="text-[10px] font-mono font-black text-white/20 tracking-[0.3em] uppercase italic">Live Resource Load</h3>
-                </div>
-                <div className="space-y-5">
-                    {(() => {
-                        const resources = [
-                            { label: 'Neural Compute', val: '1.2 GFLOPS', pct: 84 },
-                            { label: 'Memory Buffer', val: '2.4 / 4.0 GB', pct: 62 },
-                            { label: 'Market Bandwidth', val: 'Active Link', pct: 92 },
-                            { label: 'Agent Throughput', val: '84 req/min', pct: 45 }
-                        ];
-                        return resources.map((r) => (
-                        <div key={r.label} className="space-y-2">
-                            <div className="flex justify-between text-[9px] font-mono uppercase tracking-widest">
-                                <span className="text-white/40">{r.label}</span>
-                                <span className="text-white/60 font-black">{r.val}</span>
-                            </div>
-                            <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                <motion.div 
-                                  className="h-full bg-[#00ffd1] shadow-[0_0_10px_#00ffd1] rounded-full"
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${r.pct}%` }}
-                                  transition={{ duration: 1 }}
-                                />
-                            </div>
-                        </div>
-                    ))})()}
-                </div>
-            </div>
+                  <div className="p-5 bg-[#00ffd1]/5 border border-[#00ffd1]/20 rounded-2xl relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#00ffd1]/10 to-transparent" />
+                      <p className="text-[8px] font-mono text-[#00ffd1]/60 uppercase tracking-widest mb-4 relative z-10">Vapi Outbound (Voice)</p>
+                      <div className="flex items-end justify-between relative z-10">
+                          <p className="text-xl font-black text-[#00ffd1] italic">₺32K</p>
+                          <div className="flex items-center gap-1 text-emerald-400 text-[10px] font-mono">
+                              <TrendingUp size={12} /> +45%
+                          </div>
+                      </div>
+                      <p className="text-[8px] font-mono text-[#00ffd1]/40 mt-3 relative z-10 font-bold h-8">"Vapi closing at 18%. Shifted budget here."</p>
+                  </div>
+
+                  <div className="p-5 bg-black/40 border border-white/5 rounded-2xl">
+                      <p className="text-[8px] font-mono text-white/30 uppercase tracking-widest mb-4">Reputation Recovery</p>
+                      <div className="flex items-end justify-between">
+                          <p className="text-xl font-black text-white italic">₺4K</p>
+                          <div className="flex items-center gap-1 text-white/40 text-[10px] font-mono">
+                              <TrendingUp size={12} className="rotate-45" /> Stable
+                          </div>
+                      </div>
+                      <p className="text-[8px] font-mono text-white/20 mt-3 h-8">"Crisis shield active. Budget maintained."</p>
+                  </div>
+              </div>
           </div>
         </section>
 
