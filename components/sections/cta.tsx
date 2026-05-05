@@ -2,7 +2,7 @@
 import { motion } from "framer-motion";
 import Button from "@/components/ui/button";
 
-export default function CTA({ onOpenModal }) {
+export default function CTA({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <section className="relative py-40 px-6 overflow-hidden">
       <div className="mx-auto max-w-4xl text-center relative z-10">

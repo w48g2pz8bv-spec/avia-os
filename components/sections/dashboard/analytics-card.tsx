@@ -1,32 +1,25 @@
 "use client";
-import { motion } from "framer-motion";
-import AnalyticsCard from "./analytics-card";
-import VoiceSimulator from "./voice-simulator";
+import { TrendingUp } from "lucide-react";
 
-export default function DashboardPreview() {
+type AnalyticsCardProps = {
+  title: string;
+  value: string;
+};
+
+export default function AnalyticsCard({ title, value }: AnalyticsCardProps) {
   return (
-    <section className="relative px-6 py-32">
-      <div className="mx-auto max-w-7xl">
-        <div className="grid gap-8 lg:grid-cols-3">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            className="glass-panel lg:col-span-2 rounded-[3rem] p-10"
-          >
-            <div className="flex gap-2 mb-8">
-              <div className="h-2 w-2 rounded-full bg-red-500/50" />
-              <div className="h-2 w-2 rounded-full bg-yellow-500/50" />
-              <div className="h-2 w-2 rounded-full bg-green-500/50" />
-            </div>
-            <h3 className="font-syne text-3xl font-bold text-white mb-8">System Analytics</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <AnalyticsCard title="Neural Reach" value="1.2M+" />
-              <AnalyticsCard title="Conversion" value="24.8%" />
-            </div>
-          </motion.div>
-          <VoiceSimulator />
-        </div>
+    <div className="p-8 bg-white/[0.01] border border-white/5 rounded-[2.5rem] space-y-4 group hover:border-[#00ffd1]/20 transition-all">
+      <div className="flex justify-between items-center text-white/20">
+        <p className="text-[10px] font-mono font-black uppercase tracking-[0.4em] italic">{title}</p>
+        <TrendingUp size={14} className="group-hover:text-[#00ffd1] transition-colors" />
       </div>
-    </section>
+      <div className="flex items-baseline gap-2">
+        <h3 className="text-3xl font-black italic text-white/90">{value}</h3>
+        <span className="text-[10px] font-mono text-[#00ffd1]">+12.4%</span>
+      </div>
+      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+        <div className="h-full bg-[#00ffd1]/20 w-[65%] group-hover:bg-[#00ffd1]/40 transition-all" />
+      </div>
+    </div>
   );
 }

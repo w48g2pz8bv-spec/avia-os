@@ -8,7 +8,7 @@ const plans = [
   { name: "Enterprise", price: "$Custom", features: ["Dedicated Infrastructure", "White-label API"] }
 ];
 
-export default function Pricing({ onOpenModal }) {
+export default function Pricing({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <section className="py-32 px-6">
       <div className="max-w-7xl mx-auto text-center mb-20">

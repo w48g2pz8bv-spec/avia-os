@@ -1,10 +1,15 @@
-import { redirect } from "next/navigation";
+"use client";
 
-/**
- * Melih, ana sayfayı landing gibi kullanmak yerine 
- * doğrudan Dashboard'a yönlendiriyoruz. 
- * Bu, landing page scroll hatalarını kökten çözer.
- */
-export default function Home() {
-  redirect("/dashboard");
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+export default function RootPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Döngüyü kırmak için replace kullanıyoruz
+    router.replace("/login");
+  }, [router]);
+
+  return null;
 }

@@ -1,7 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 
-export default function Navbar({ onOpenModal }) {
+export default function Navbar({ onOpenModal }: { onOpenModal: () => void }) {
   return (
     <nav className="fixed top-0 w-full z-[100] px-6 py-8">
       <div className="max-w-7xl mx-auto glass-panel rounded-2xl px-10 py-5 flex justify-between items-center backdrop-blur-xl">

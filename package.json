@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.105.3",
     "@tailwindcss/postcss": "^4.2.4",
     "autoprefixer": "^10.5.0",
     "clsx": "latest",
@@ -19,6 +20,8 @@
     "postcss": "^8.5.13",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-is": "^19.2.5",
+    "recharts": "^3.8.1",
     "tailwind-merge": "latest",
     "tailwindcss": "^4.2.4"
   },
